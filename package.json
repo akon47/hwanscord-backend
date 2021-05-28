@@ -15,5 +15,13 @@
   "bugs": {
     "url": "https://github.com/akon47/hwanscord-backend/issues"
   },
-  "homepage": "https://github.com/akon47/hwanscord-backend#readme"
+  "homepage": "https://github.com/akon47/hwanscord-backend#readme",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "mongoose": "^5.12.11",
+    "swagger-ui-express": "^4.1.6"
+  }
 }
