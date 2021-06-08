@@ -56,10 +56,10 @@
           }
         }
       },
-      "/login": {
+      "/signin": {
         "post": {
           "tags": [
-            "/login"
+            "/signin"
           ],
           "description": "로그인하는 API 입니다. 사용자 아이디와 암호를 입력해야 합니다.",
           "parameters": [
