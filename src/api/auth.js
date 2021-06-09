@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt')
 const express = require('express')
-const user = require('../models/user.js')
+const usermodel = require('../models/UserModel.js')
 const { generateNewToken } = require('../utils/utils.js')
 
 const router = express.Router();
@@ -15,7 +15,7 @@ router.post('/signup', (req, res) => {
           error,
         });
       } else {
-        const newUser = new user({
+        const newUser = new usermodel({
           username,
           password: hashedPassword,
         });
@@ -34,7 +34,7 @@ router.post('/signup', (req, res) => {
 
 router.post('/signin', (req, res) => {
   const { username, password } = req.body;
-  user.findOne({
+  usermodel.findOne({
     username,
   }).then(user => {
     if (!user) {

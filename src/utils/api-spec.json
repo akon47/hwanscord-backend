@@ -119,23 +119,16 @@
           "password": {
             "type": "string",
             "description": "User's password"
-          },
-          "nickname": {
-            "type": "string",
-            "description": "User's nickname"
           }
         }
       },
-      "Posts": {
+      "Messages": {
         "type": "object",
         "properties": {
           "_id": {
             "type": "string"
           },
-          "title": {
-            "type": "string"
-          },
-          "contents": {
+          "message": {
             "type": "string"
           }
         }

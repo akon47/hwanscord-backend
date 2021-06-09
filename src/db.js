@@ -12,5 +12,5 @@ module.exports = () => {
         mongoose.Promise = global.Promise;
     }   
     connect();
-    require('./models/user.js');
+    require('./models/UserModel.js');
 }
