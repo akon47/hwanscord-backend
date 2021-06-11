@@ -1,153 +1,144 @@
 {
-    "swagger": "2.0",
-    "info": {
-      "title": "Hwanscord API 문서",
-      "description": "",
-      "version": "1.0"
-    },
-    "produces": [
-      "application/json"
-    ],
-    "paths": {
-      "/signup": {
-        "post": {
-          "tags": [
-            "/signup"
-          ],
-          "description": "회원 가입을 위한 API 입니다. 사용자 아이디, 암호 2개를 입력해야 합니다.",
-          "parameters": [
-            {
-              "name": "username",
-              "in": "formData",
-              "description": "사용자 아이디",
-              "required": true,
-              "type": "string"
-            },
-            {
-              "name": "password",
-              "in": "formData",
-              "description": "비밀번호",
-              "required": true,
-              "type": "string"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "[완료]가입이 정상적으로 완료되었습니다.",
-              "content": {
-                "application/json": {},
-                "application/xml": {}
-              }
-            },
-            "409": {
-              "description": "[에러]사용자 아이디가 이미 존재하여 회원 가입이 실패하였습니다.",
-              "content": {
-                "application/json": {},
-                "application/xml": {}
-              }
-            },
-            "500": {
-              "description": "[에러]서버에 문제가 있어 회원 가입에 실패하였습니다.",
-              "content": {
-                "application/json": {},
-                "application/xml": {}
-              }
-            }
-          }
-        }
-      },
-      "/signin": {
-        "post": {
-          "tags": [
-            "/signin"
-          ],
-          "description": "로그인하는 API 입니다. 사용자 아이디와 암호를 입력해야 합니다.",
-          "parameters": [
-            {
-              "name": "username",
-              "in": "formData",
-              "description": "사용자 아이디",
-              "required": true,
-              "type": "string"
-            },
-            {
-              "name": "password",
-              "in": "formData",
-              "description": "비밀번호",
-              "required": true,
-              "type": "string"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "[완료]로그인이 완료되었습니다",
-              "content": {
-                "application/json": {},
-                "application/xml": {}
-              }
-            },
-            "401": {
-              "description": "[에러]비밀번호가 맞지 않아 로그인에 실패하였습니다",
-              "content": {
-                "application/json": {},
-                "application/xml": {}
-              }
-            },
-            "500": {
-              "description": "[에러]서버에 문제가 있어 로그인하지 못했습니다",
-              "content": {
-                "application/json": {},
-                "application/xml": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "definitions": {
-      "Users": {
-        "type": "object",
-        "properties": {
-          "_id": {
-            "type": "string",
-            "format": "int64"
-          },
-          "username": {
-            "type": "string",
-            "description": "User's name"
-          },
-          "password": {
-            "type": "string",
-            "description": "User's password"
-          }
-        }
-      },
-      "Messages": {
-        "type": "object",
-        "properties": {
-          "_id": {
+  "swagger": "2.0",
+  "info": {
+    "title": "Hwanscord API 문서",
+    "description": "",
+    "version": "1.0"
+  },
+  "produces": ["application/json"],
+  "paths": {
+    "/signup": {
+      "post": {
+        "tags": ["/signup"],
+        "description": "회원 가입을 위한 API 입니다. 사용자 아이디, 암호 2개를 입력해야 합니다.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "formData",
+            "description": "사용자 아이디",
+            "required": true,
             "type": "string"
           },
-          "message": {
+          {
+            "name": "password",
+            "in": "formData",
+            "description": "비밀번호",
+            "required": true,
             "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "[완료]가입이 정상적으로 완료되었습니다.",
+            "content": {
+              "application/json": {},
+              "application/xml": {}
+            }
+          },
+          "409": {
+            "description": "[에러]사용자 아이디가 이미 존재하여 회원 가입이 실패하였습니다.",
+            "content": {
+              "application/json": {},
+              "application/xml": {}
+            }
+          },
+          "500": {
+            "description": "[에러]서버에 문제가 있어 회원 가입에 실패하였습니다.",
+            "content": {
+              "application/json": {},
+              "application/xml": {}
+            }
           }
         }
       }
     },
-    "security": [
-      {
-        "jwt": [],
-        "petstore_auth": [
-          "write:pets",
-          "read:pets"
-        ]
-      }
-    ],
-    "securityDefinitions": {
-      "jwt": {
-        "type": "apiKey",
-        "name": "Authorization",
-        "in": "header"
+    "/signin": {
+      "post": {
+        "tags": ["/signin"],
+        "description": "로그인하는 API 입니다. 사용자 아이디와 암호를 입력해야 합니다.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "formData",
+            "description": "사용자 아이디",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "password",
+            "in": "formData",
+            "description": "비밀번호",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "[완료]로그인이 완료되었습니다",
+            "content": {
+              "application/json": {},
+              "application/xml": {}
+            }
+          },
+          "401": {
+            "description": "[에러]비밀번호가 맞지 않아 로그인에 실패하였습니다",
+            "content": {
+              "application/json": {},
+              "application/xml": {}
+            }
+          },
+          "500": {
+            "description": "[에러]서버에 문제가 있어 로그인하지 못했습니다",
+            "content": {
+              "application/json": {},
+              "application/xml": {}
+            }
+          }
+        }
       }
     }
+  },
+  "definitions": {
+    "Users": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "username": {
+          "type": "string",
+          "description": "User's name"
+        },
+        "password": {
+          "type": "string",
+          "description": "User's password"
+        }
+      }
+    },
+    "Messages": {
+      "type": "object",
+      "properties": {
+        "_id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "jwt": [],
+      "petstore_auth": ["write:pets", "read:pets"]
+    }
+  ],
+  "securityDefinitions": {
+    "jwt": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
   }
+}

@@ -1,31 +1,45 @@
-const express = require('express');
-const cors = require('cors');
-const db = require('./db.js');
+const express = require("express");
+const app = express();
+const http = require("http");
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "http://kimhwan.kr:8082",
+    credentials: true,
+    methods: ["GET", "POST"],
+    transports: ["websocket", "polling"],
+  },
+  allowEIO3: true,
+});
 
-const { authenticateUser } = require('./utils/utils.js')
+const cors = require("cors");
+const db = require("./db.js");
 
-const auth = require('./api/auth.js');
-const messages = require('./api/messages');
-const docs = require('./utils/api-doc.js');
+const socketEvents = require("./socket.js");
 
-const init = () => {
-    db();
+const { authenticateUser } = require("./utils/utils.js");
 
-    const app = express();
-    app.use(cors());
-    app.use(express.urlencoded({ extended: true }));
-    app.use(express.json());
+const auth = require("./api/auth.js");
+const messages = require("./api/messages");
+const docs = require("./utils/api-doc.js");
 
-    // routers
-    app.use('/', auth);
-    app.use('/messages', authenticateUser, messages);
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-    app.use('/api', docs);
+// routers
+app.use("/", auth);
+app.use("/messages", authenticateUser, messages);
+app.use("/api", docs);
 
-    const port = 8080;
-    app.listen(port, () => {
-        console.log(`API server app listening at http://localhost:${port}`);
-    })
-};
+setTimeout(() => {
+  db();
 
-setTimeout(init, 3000); // wait for db
+  socketEvents(io);
+
+  const port = 8080;
+  server.listen(port, () => {
+    console.log(`API server app listening at http://localhost:${port}`);
+  });
+}, 3000); // wait for db
