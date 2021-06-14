@@ -16,6 +16,7 @@ module.exports = (io) => {
       io.emit("userConnected", { userid, connections });
     } else {
       console.log(`a user connected - unknown user`);
+      socket.emit("unauthorized");
     }
     socket.on("disconnect", async () => {
       const userid = await getUserIdByToken(socket.handshake.auth.token);
