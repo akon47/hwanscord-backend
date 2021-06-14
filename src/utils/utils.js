@@ -18,6 +18,15 @@ const utils = {
     });
   },
   verifyToken: (token) => verifyToken(token),
+  getUserIdByToken: async (token) => {
+    let payload;
+    try {
+      payload = await verifyToken(token);
+    } catch (e) {
+      return null;
+    }
+    return payload._id;
+  },
   authenticateUser: async (req, res, next) => {
     if (!req.headers.authorization) {
       return res.status(401).json({ message: "token must be included" });

@@ -17,6 +17,8 @@ services:
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: root
+  redis-server:
+    image: redis
   node-app:
     build: .
     restart: always

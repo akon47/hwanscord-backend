@@ -9,11 +9,15 @@ router.post("/", async (req, res) => {
       ...req.body,
       createdBy: req.user._id,
     });
-    const messageData = { data: doc };
-    res.status(201).json(messageData);
+    res.status(201).json({ data: doc });
 
-    process.emit('newMessageReceived', messageData);
-
+    const messageData = await messages
+      .findOne({ _id: doc._id })
+      .sort({ insertedDate: 1 })
+      .populate("createdBy", "username")
+      .lean()
+      .exec();
+    process.emit("newMessageReceived", messageData);
   } catch (error) {
     console.log(error);
     if (error.code === 11000) {
@@ -25,7 +29,12 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const docs = await messages.find().sort({ insertedDate: 1 }).lean().exec();
+    const docs = await messages
+      .find()
+      .sort({ insertedDate: 1 })
+      .populate("createdBy", "username")
+      .lean()
+      .exec();
 
     res.status(200).json({
       messages: docs,
