@@ -7,6 +7,10 @@ module.exports = (io) => {
     io.emit("newMessageReceived", data);
   });
 
+  process.on("userAvatarChanged", (data) => {
+    io.emit("userAvatarChanged", data);
+  });
+
   io.on("connection", async (socket) => {
     const userid = await getUserIdByToken(socket.handshake.auth.token);
     if (userid != null) {

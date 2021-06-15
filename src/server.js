@@ -25,6 +25,9 @@ const messages = require("./api/messages.js");
 const users = require("./api/users.js");
 const docs = require("./utils/api-doc.js");
 
+const avatar = require("./upload/avatar.js");
+const attachments = require("./upload/attachments.js");
+
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -34,6 +37,9 @@ app.use("/", auth);
 app.use("/messages", authenticateUser, messages);
 app.use("/users", authenticateUser, users);
 app.use("/api", docs);
+
+app.use("/avatar", avatar);
+app.use("/attachments", attachments);
 
 setTimeout(() => {
   db();
