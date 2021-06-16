@@ -1,11 +1,11 @@
-const express = require("express");
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
-const { authenticateUser } = require("../utils/utils.js");
-const avatarmodel = require("../models/AvatarModel.js");
+const express = require('express');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const { authenticateUser } = require('../../utils/utils.js');
+const avatarmodel = require('../../models/AvatarModel.js');
 
-const baseDir = "avatar/";
+const baseDir = 'avatar/';
 const dir = path.resolve(baseDir);
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir);
@@ -16,10 +16,10 @@ var upload = multer({ dest: dir });
 const router = express.Router();
 
 router.post(
-  "/",
+  '/',
   authenticateUser,
-  upload.single("avatar"),
-  async (req, res, next) => {
+  upload.single('avatar'),
+  async (req, res) => {
     const newFilePath = `${req.file.path}${path.extname(
       req.file.originalname
     )}`;
@@ -27,12 +27,10 @@ router.post(
 
     const avatars = await avatarmodel
       .find({
-        createdBy: req.userid,
+        createdBy: req.user._id,
       })
       .lean()
       .exec();
-
-    console.log(avatars);
 
     for (let i = 0; i < avatars.length; i++) {
       if (fs.existsSync(avatars[i].localFilePath)) {
@@ -40,13 +38,13 @@ router.post(
       }
     }
 
-    await avatarmodel.deleteMany({ createdBy: req.userid });
+    await avatarmodel.deleteMany({ createdBy: req.user._id });
     await avatarmodel.create({
       localFilePath: newFilePath,
       createdBy: req.user._id,
     });
 
-    process.emit("userAvatarChanged", {
+    process.emit('userAvatarChanged', {
       userid: req.user._id,
       avatar: {
         filepath: `${baseDir}${path.basename(newFilePath)}`,
@@ -61,8 +59,7 @@ router.post(
   }
 );
 
-router.get("/:id", async (req, res) => {
-  console.log(`avatar[get]: ${dir}/${req.params.id}`);
+router.get('/:id', async (req, res) => {
   return res.sendFile(`${dir}/${req.params.id}`);
 });
 

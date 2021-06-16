@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema(
   {
@@ -11,7 +11,7 @@ const messageSchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.SchemaTypes.ObjectId,
-      ref: "Users",
+      ref: 'Users',
       required: true,
     },
     insertedDate: { type: Date, default: Date.now },
@@ -19,4 +19,4 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Messages", messageSchema);
+module.exports = mongoose.model('Messages', messageSchema);

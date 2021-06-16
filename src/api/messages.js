@@ -1,38 +1,94 @@
-const express = require("express");
-const messages = require("../models/MessageModel.js");
+const express = require('express');
+const messagemodel = require('../models/MessageModel.js');
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const doc = await messages.create({
+    const doc = await messagemodel.create({
       ...req.body,
       createdBy: req.user._id,
     });
-    res.status(201).json({ data: doc });
 
-    const messageData = await messages
+    const messageData = await messagemodel
       .findOne({ _id: doc._id })
-      .sort({ insertedDate: 1 })
-      .populate("createdBy", "username")
+      .populate('createdBy', 'username')
       .lean()
       .exec();
-    process.emit("newMessageReceived", messageData);
+    process.emit('newMessageReceived', messageData);
+
+    res.status(201).json({ data: messageData });
   } catch (error) {
     console.log(error);
     if (error.code === 11000) {
-      return res.status(400).send({ message: "Duplicated Data", error });
+      return res.status(400).send({ message: 'Duplicated Data', error });
     }
-    res.status(400).send({ message: "sth wrong", error });
+    res.status(400).send({ message: 'sth wrong', error });
   }
 });
 
-router.get("/", async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const docs = await messages
+    const removed = await messagemodel
+      .findOneAndDelete({
+        createdBy: req.user._id,
+        _id: req.params.id,
+      })
+      .lean()
+      .exec();
+
+    if (!removed) {
+      return res.status(400).json({ message: 'cannot remove the data' });
+    }
+
+    process.emit('messageDeleted', { messageid: req.params.id });
+
+    return res.status(200).json({ ...removed });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'sth wrong', error });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const updatedDoc = await messagemodel
+      .findOneAndUpdate(
+        {
+          createdBy: req.user._id,
+          _id: req.params.id,
+        },
+        req.body,
+        { new: true }
+      )
+      .lean()
+      .exec();
+
+    if (!updatedDoc) {
+      return res.status(400).json({ message: 'cannot update the data' });
+    }
+
+    const messageData = await messagemodel
+      .findOne({ _id: req.params.id })
+      .populate('createdBy', 'username')
+      .lean()
+      .exec();
+
+    process.emit('messageModified', messageData);
+
+    res.status(201).json({ data: messageData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'sth wrong', error });
+  }
+});
+
+router.get('/', async (req, res) => {
+  try {
+    const docs = await messagemodel
       .find()
       .sort({ insertedDate: 1 })
-      .populate("createdBy", "username")
+      .populate('createdBy', 'username')
       .lean()
       .exec();
 
@@ -41,7 +97,7 @@ router.get("/", async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(400).json({ message: "sth wrong", error });
+    res.status(400).json({ message: 'sth wrong', error });
   }
 });
 

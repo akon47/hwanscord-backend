@@ -1,34 +1,43 @@
-const { getUserIdByToken } = require("./utils/utils.js");
-const { increaseConnection, decreaseConnection } = require("./redis-client.js");
+const { getUserIdByToken } = require('./utils/utils.js');
+const { increaseConnection, decreaseConnection } = require('./redis-client.js');
 
 module.exports = (io) => {
-  process.on("newMessageReceived", (data) => {
-    console.log("newMessageReceived");
-    io.emit("newMessageReceived", data);
+  process.on('newMessageReceived', (data) => {
+    io.emit('newMessageReceived', data);
   });
 
-  process.on("userAvatarChanged", (data) => {
-    io.emit("userAvatarChanged", data);
+  process.on('userAvatarChanged', (data) => {
+    io.emit('userAvatarChanged', data);
   });
 
-  io.on("connection", async (socket) => {
+  process.on('messageDeleted', (data) => {
+    io.emit('messageDeleted', data);
+  });
+
+  process.on('messageModified', (data) => {
+    io.emit('messageModified', data);
+  });
+
+  io.on('connection', async (socket) => {
     const userid = await getUserIdByToken(socket.handshake.auth.token);
     if (userid != null) {
       const connections = await increaseConnection(userid);
       console.log(`a user connected - ${userid}, connections: ${connections}`);
 
-      io.emit("userConnected", { userid, connections });
+      io.emit('userConnected', { userid, connections });
     } else {
       console.log(`a user connected - unknown user`);
-      socket.emit("unauthorized");
+      socket.emit('unauthorized');
     }
-    socket.on("disconnect", async () => {
+    socket.on('disconnect', async () => {
       const userid = await getUserIdByToken(socket.handshake.auth.token);
       if (userid != null) {
         const connections = await decreaseConnection(userid);
-        console.log(`a user disconnected - ${userid}, connections: ${connections}`);
+        console.log(
+          `a user disconnected - ${userid}, connections: ${connections}`
+        );
 
-        io.emit("userDisconnected", { userid, connections });
+        io.emit('userDisconnected', { userid, connections });
       } else {
         console.log(`a user disconnected - unknown user`);
       }
