@@ -24,8 +24,8 @@ router.post('/signup', (req, res) => {
           console.log(error);
           res.status(409).send(error);
         } else {
-          console.log(saved);
-          res.send(saved);
+          const token = generateNewToken(saved);
+          res.send({ token, ...saved._doc });
         }
       });
     }

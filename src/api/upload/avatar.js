@@ -38,7 +38,7 @@ router.post(
       }
     }
 
-    await avatarmodel.deleteMany({ createdBy: req.user._id });
+    await avatarmodel.deleteMany({ createdBy: req.user._id }).lean().exec();
     await avatarmodel.create({
       localFilePath: newFilePath,
       createdBy: req.user._id,

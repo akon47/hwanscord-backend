@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
       docs[i].connections = parseInt(connections);
       let avatar = null;
 
-      const doc = await avatarmodel.findOne({ createdBy: docs[i]._id });
+      const doc = await avatarmodel.findOne({ createdBy: docs[i]._id }).exec();
       if (doc !== null) {
         avatar = {
           filepath: `avatar/${path.basename(doc.localFilePath)}`,
