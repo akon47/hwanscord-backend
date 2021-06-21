@@ -1,22 +1,17 @@
 const mongoose = require('mongoose');
 
-const messageSchema = new mongoose.Schema(
+const channelSchema = new mongoose.Schema(
   {
-    message: {
+    channelName: {
       type: String,
       required: true,
-      unique: false,
+      unique: true,
       trim: true,
-      maxlength: 1000,
+      maxlength: 255,
     },
     createdBy: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'Users',
-      required: true,
-    },
-    postedBy: {
-      type: mongoose.SchemaTypes.ObjectId,
-      ref: 'Channels',
       required: false,
     },
     insertedDate: { type: Date, default: Date.now },
@@ -24,4 +19,4 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Messages', messageSchema);
+module.exports = mongoose.model('Channels', channelSchema);

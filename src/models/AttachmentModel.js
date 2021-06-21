@@ -18,7 +18,7 @@ const attachmentSchema = new mongoose.Schema({
   md5: {
     type: String,
     required: true,
-    unique: true,
+    unique: false,
     trim: true,
     maxlength: 255,
   },

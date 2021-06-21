@@ -13,6 +13,7 @@ router.post('/', async (req, res) => {
     const messageData = await messagemodel
       .findOne({ _id: doc._id })
       .populate('createdBy', 'username')
+      .populate('postedBy')
       .lean()
       .exec();
     process.emit('newMessageReceived', messageData);
@@ -71,6 +72,7 @@ router.put('/:id', async (req, res) => {
     const messageData = await messagemodel
       .findOne({ _id: req.params.id })
       .populate('createdBy', 'username')
+      .populate('postedBy')
       .lean()
       .exec();
 
@@ -83,12 +85,13 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.get('/', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const docs = await messagemodel
-      .find()
+      .find({ postedBy: req.params.id })
       .sort({ insertedDate: 1 })
       .populate('createdBy', 'username')
+      .populate('postedBy')
       .lean()
       .exec();
 

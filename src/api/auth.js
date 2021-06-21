@@ -24,8 +24,12 @@ router.post('/signup', (req, res) => {
           console.log(error);
           res.status(409).send(error);
         } else {
+          let userData = { ...saved._doc, avatar: null };
+          delete userData.password;
+          process.emit('newUserSignup', userData);
+
           const token = generateNewToken(saved);
-          res.send({ token, ...saved._doc });
+          res.send({ token, ...saved._doc, avatar: null });
         }
       });
     }

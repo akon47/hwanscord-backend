@@ -21,23 +21,27 @@ router.post(
   authenticateUser,
   upload.single('attachment'),
   async (req, res) => {
-    const newFilePath = `${req.file.path}${path.extname(
-      req.file.originalname
-    )}`;
-    fs.renameSync(req.file.path, newFilePath);
-    const hash = md5file.sync(newFilePath);
-    await attachmentmodel.create({
-      localFilePath: newFilePath,
-      originalName: req.file.originalname,
-      md5: hash,
-      createdBy: req.user._id,
-    });
-
-    res.status(200).json({
-      filepath: `${baseDir}${path.basename(newFilePath)}`,
-      filename: `${path.basename(newFilePath)}`,
-      originalname: req.file.originalname,
-    });
+    try {
+      const newFilePath = `${req.file.path}${path.extname(
+        req.file.originalname
+      )}`;
+      fs.renameSync(req.file.path, newFilePath);
+      const hash = md5file.sync(newFilePath);
+      await attachmentmodel.create({
+        localFilePath: newFilePath,
+        originalName: req.file.originalname,
+        md5: hash,
+        createdBy: req.user._id,
+      });
+  
+      res.status(200).json({
+        filepath: `${baseDir}${path.basename(newFilePath)}`,
+        filename: `${path.basename(newFilePath)}`,
+        originalname: req.file.originalname,
+      });
+    } catch (error) {
+      res.status(500).json('Internal Server Error');
+    }
   }
 );
 

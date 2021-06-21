@@ -6,8 +6,20 @@ module.exports = (io) => {
     io.emit('newMessageReceived', data);
   });
 
+  process.on('newChannelAdded', (data) => {
+    io.emit('newChannelAdded', data);
+  });
+
+  process.on('channelDeleted', (data) => {
+    io.emit('channelDeleted', data);
+  });
+
   process.on('userAvatarChanged', (data) => {
     io.emit('userAvatarChanged', data);
+  });
+
+  process.on('newUserSignup', (data) => {
+    io.emit('newUserSignup', data);
   });
 
   process.on('messageDeleted', (data) => {

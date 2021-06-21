@@ -21,6 +21,7 @@ const socketEvents = require('./socket.js');
 const { authenticateUser } = require('./utils/utils.js');
 
 const auth = require('./api/auth.js');
+const channels = require('./api/channels.js');
 const messages = require('./api/messages.js');
 const users = require('./api/users.js');
 const docs = require('./utils/api-doc.js');
@@ -34,6 +35,7 @@ app.use(express.json());
 
 // routers
 app.use('/', auth);
+app.use('/channels', authenticateUser, channels);
 app.use('/messages', authenticateUser, messages);
 app.use('/users', authenticateUser, users);
 app.use('/api', docs);
