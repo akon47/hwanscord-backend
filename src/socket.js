@@ -1,5 +1,6 @@
 const { getUserIdByToken } = require('./utils/utils.js');
 const { increaseConnection, decreaseConnection } = require('./redis-client.js');
+const signalingServer = require('./webrtc/signaling-server.js');
 
 module.exports = (io) => {
   process.on('newMessageReceived', (data) => {
@@ -39,6 +40,8 @@ module.exports = (io) => {
     if (userid != null) {
       const connections = await increaseConnection(userid);
       console.log(`a user connected - ${userid}, connections: ${connections}`);
+
+      signalingServer(socket);
 
       io.emit('userConnected', { userid, connections });
     } else {
