@@ -28,27 +28,60 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
-    try {
-      const removed = await channelmodel
-        .findOneAndDelete({
+  try {
+    const removed = await channelmodel
+      .findOneAndDelete({
+        createdBy: req.user._id,
+        _id: req.params.id,
+      })
+      .lean()
+      .exec();
+
+    if (!removed) {
+      return res.status(400).json({ message: 'cannot remove the data' });
+    }
+
+    process.emit('channelDeleted', { ...removed });
+
+    return res.status(200).json({ ...removed });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'sth wrong', error });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const updatedDoc = await channelmodel
+      .findOneAndUpdate(
+        {
           createdBy: req.user._id,
           _id: req.params.id,
-        })
-        .lean()
-        .exec();
-  
-      if (!removed) {
-        return res.status(400).json({ message: 'cannot remove the data' });
-      }
-  
-      process.emit('channelDeleted', { ...removed });
-  
-      return res.status(200).json({ ...removed });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'sth wrong', error });
+        },
+        req.body,
+        { new: true }
+      )
+      .lean()
+      .exec();
+
+    if (!updatedDoc) {
+      return res.status(400).json({ message: 'cannot update the data' });
     }
-  });
+
+    const channelData = await channelmodel
+      .findOne({ _id: req.params.id })
+      .populate('createdBy', 'username')
+      .lean()
+      .exec();
+
+    process.emit('channelModified', channelData);
+
+    res.status(201).json({ data: channelData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'sth wrong', error });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {

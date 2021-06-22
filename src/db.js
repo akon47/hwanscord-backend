@@ -34,4 +34,8 @@ module.exports = () => {
   };
   connect();
   require('./models/UserModel.js');
+  require('./models/ChannelModel.js');
+  require('./models/MessageModel.js');
+  require('./models/AvatarModel.js');
+  require('./models/AttachmentModel.js');
 };

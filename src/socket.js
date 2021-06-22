@@ -14,6 +14,10 @@ module.exports = (io) => {
     io.emit('channelDeleted', data);
   });
 
+  process.on('channelModified', (data) => {
+    io.emit('channelModified', data);
+  });
+
   process.on('userAvatarChanged', (data) => {
     io.emit('userAvatarChanged', data);
   });
