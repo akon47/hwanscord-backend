@@ -10,4 +10,78 @@ module.exports = (socket) => {
     console.log(`SignalingServer: ${socket.id} disconnected`);
     delete sockets[socket.id];
   });
+
+  socket.on('joinVoiceChannel', (data) => {
+    console.log(`SignalingServer: ${socket.id} joinVoiceChannel`, data);
+    const { channel, userdata } = data;
+
+    if (channel in socket.channels) {
+      console.log(`[${socket.id}] ERROR: already joined `, channel);
+      return;
+    }
+
+    if (!(channel in channels)) {
+      channels[channel] = {};
+    }
+
+    for (id in channels[channel]) {
+      channels[channel][id].emit('addPeer', {
+        peerId: socket.id,
+        shouldCreateOffer: false,
+      });
+      socket.emit('addPeer', { peerId: id, shouldCreateOffer: true });
+    }
+
+    channels[channel][socket.id] = socket;
+    socket.channels[channel] = channel;
+  });
+
+  function partVoiceChannel(channel) {
+    console.log(`[${socket.id}] partVoiceChannel `);
+
+    if (!(channel in socket.channels)) {
+      console.log(`[${socket.id}] ERROR: not in `, channel);
+      return;
+    }
+
+    delete socket.channels[channel];
+    delete channels[channel][socket.id];
+
+    for (id in channels[channel]) {
+      channels[channel][id].emit('removePeer', { peerId: socket.id });
+      socket.emit('removePeer', { peerId: id });
+    }
+  }
+  
+  socket.on('partVoiceChannel', partVoiceChannel);
+
+  socket.on('relayICECandidate', function (config) {
+    const { peerId, iceCandidate } = config;
+    console.log(
+      `[${socket.id}] relaying ICE candidate to [${peerId}] `,
+      iceCandidate
+    );
+
+    if (peerId in sockets) {
+      sockets[peerId].emit('iceCandidate', {
+        peerId: socket.id,
+        iceCandidate: iceCandidate,
+      });
+    }
+  });
+
+  socket.on('relaySessionDescription', function (config) {
+    const { peerId, sessionDescription } = config;
+    console.log(
+      `[${socket.id}] relaying session description to [${peerId}] `,
+      sessionDescription
+    );
+
+    if (peerId in sockets) {
+      sockets[peerId].emit('sessionDescription', {
+        peerId: socket.id,
+        sessionDescription: sessionDescription,
+      });
+    }
+  });
 };

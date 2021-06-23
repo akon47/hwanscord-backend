@@ -8,9 +8,9 @@ const io = new Server(server, {
     origin: 'http://kimhwan.kr:8082',
     credentials: true,
     methods: ['GET', 'POST'],
-    transports: ['websocket', 'polling'],
   },
-  allowEIO3: true,
+  transports: ['websocket', 'polling'],
+  allowEIO3: false,
 });
 
 const cors = require('cors');
@@ -22,6 +22,7 @@ const { authenticateUser } = require('./utils/utils.js');
 
 const auth = require('./api/auth.js');
 const channels = require('./api/channels.js');
+const voiceChannels = require('./api/voiceChannels.js');
 const messages = require('./api/messages.js');
 const users = require('./api/users.js');
 const docs = require('./utils/api-doc.js');
@@ -36,6 +37,7 @@ app.use(express.json());
 // routers
 app.use('/', auth);
 app.use('/channels', authenticateUser, channels);
+app.use('/voice-channels', authenticateUser, voiceChannels);
 app.use('/messages', authenticateUser, messages);
 app.use('/users', authenticateUser, users);
 app.use('/api', docs);

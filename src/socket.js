@@ -19,6 +19,18 @@ module.exports = (io) => {
     io.emit('channelModified', data);
   });
 
+  process.on('newVoiceChannelAdded', (data) => {
+    io.emit('newVoiceChannelAdded', data);
+  });
+
+  process.on('voiceChannelDeleted', (data) => {
+    io.emit('voiceChannelDeleted', data);
+  });
+
+  process.on('voiceChannelModified', (data) => {
+    io.emit('voiceChannelModified', data);
+  });
+
   process.on('userAvatarChanged', (data) => {
     io.emit('userAvatarChanged', data);
   });
