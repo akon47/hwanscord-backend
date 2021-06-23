@@ -1,13 +1,16 @@
 var channels = {};
 var sockets = {};
 
-module.exports = (socket) => {
+module.exports = (io, socket) => {
   socket.channels = {};
   sockets[socket.id] = socket;
 
   console.log(`SignalingServer: ${socket.id} connection accepted`);
   socket.on('disconnect', async () => {
     console.log(`SignalingServer: ${socket.id} disconnected`);
+    for(channel in socket.channels) {
+      partVoiceChannel(channel);
+    }
     delete sockets[socket.id];
   });
 
@@ -19,6 +22,12 @@ module.exports = (socket) => {
       console.log(`[${socket.id}] ERROR: already joined `, channel);
       return;
     }
+
+    io.emit('voiceChannelJoined', {
+      channelId: channel,
+      user: socket.user,
+      socketId: socket.id,
+    });
 
     if (!(channel in channels)) {
       channels[channel] = {};
@@ -47,12 +56,18 @@ module.exports = (socket) => {
     delete socket.channels[channel];
     delete channels[channel][socket.id];
 
+    io.emit('voiceChannelParted', {
+      channelId: channel,
+      user: socket.user,
+      socketId: socket.id,
+    });
+
     for (id in channels[channel]) {
       channels[channel][id].emit('removePeer', { peerId: socket.id });
       socket.emit('removePeer', { peerId: id });
     }
   }
-  
+
   socket.on('partVoiceChannel', partVoiceChannel);
 
   socket.on('relayICECandidate', function (config) {

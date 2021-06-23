@@ -1,4 +1,4 @@
-const { getUserIdByToken } = require('./utils/utils.js');
+const { getUserDataByToken } = require('./utils/utils.js');
 const { increaseConnection, decreaseConnection } = require('./redis-client.js');
 const signalingServer = require('./webrtc/signaling-server.js');
 
@@ -48,27 +48,28 @@ module.exports = (io) => {
   });
 
   io.on('connection', async (socket) => {
-    const userid = await getUserIdByToken(socket.handshake.auth.token);
-    if (userid != null) {
-      const connections = await increaseConnection(userid);
-      console.log(`a user connected - ${userid}, connections: ${connections}`);
+    const user = await getUserDataByToken(socket.handshake.auth.token);
+    if (user != null) {
+      const connections = await increaseConnection(user._id.toString());
+      console.log(`a user connected - ${user.username} (${user._id}), connections: ${connections}`);
 
-      signalingServer(socket);
+      socket.user = user;
+      signalingServer(io, socket);
 
-      io.emit('userConnected', { userid, connections });
+      io.emit('userConnected', { userId: user._id, connections });
     } else {
       console.log(`a user connected - unknown user`);
       socket.emit('unauthorized');
     }
     socket.on('disconnect', async () => {
-      const userid = await getUserIdByToken(socket.handshake.auth.token);
-      if (userid != null) {
-        const connections = await decreaseConnection(userid);
+      const user = await getUserDataByToken(socket.handshake.auth.token);
+      if (user != null) {
+        const connections = await decreaseConnection(user._id.toString());
         console.log(
-          `a user disconnected - ${userid}, connections: ${connections}`
+          `a user disconnected - ${user.username} (${user._id}), connections: ${connections}`
         );
 
-        io.emit('userDisconnected', { userid, connections });
+        io.emit('userDisconnected', { userId: user._id, connections });
       } else {
         console.log(`a user disconnected - unknown user`);
       }

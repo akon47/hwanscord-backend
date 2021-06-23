@@ -45,7 +45,7 @@ router.post(
     });
 
     process.emit('userAvatarChanged', {
-      userid: req.user._id,
+      userId: req.user._id,
       avatar: {
         filepath: `${baseDir}${path.basename(newFilePath)}`,
         filename: path.basename(newFilePath),

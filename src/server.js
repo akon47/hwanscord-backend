@@ -5,7 +5,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: 'http://kimhwan.kr:8082',
+    origin: 'https://kimhwan.kr',
     credentials: true,
     methods: ['GET', 'POST'],
   },

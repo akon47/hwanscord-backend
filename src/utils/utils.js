@@ -27,6 +27,23 @@ const utils = {
     }
     return payload._id;
   },
+  getUserDataByToken: async (token) => {
+    let payload;
+    try {
+      payload = await verifyToken(token);
+    } catch (e) {
+      return null;
+    }
+    
+    const user = await usermodel
+      .findById(payload._id)
+      .populate('createdBy', 'username')
+      .select('-password')
+      .lean()
+      .exec();
+
+    return user;
+  },
   authenticateUser: async (req, res, next) => {
     if (!req.headers.authorization) {
       return res.status(401).json({ message: 'token must be included' });
