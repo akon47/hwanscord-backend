@@ -8,19 +8,35 @@ module.exports = (io, socket) => {
   console.log(`SignalingServer: ${socket.id} connection accepted`);
   socket.on('disconnect', async () => {
     console.log(`SignalingServer: ${socket.id} disconnected`);
-    for(channel in socket.channels) {
+    for (const channel in socket.channels) {
       partVoiceChannel(channel);
     }
     delete sockets[socket.id];
   });
 
+  socket.on('getVoiceChannelPeers', (data) => {
+    const { channel } = data;
+
+    let peers = [];
+    if (channel in channels) {
+      for (id in channels[channel]) {
+        peers.push({ socketId: id, user: channels[channel][id].user });
+      }
+    }
+    socket.emit('getVoiceChannelPeers', { channelId: channel, peers: peers });
+  });
+
   socket.on('joinVoiceChannel', (data) => {
     console.log(`SignalingServer: ${socket.id} joinVoiceChannel`, data);
-    const { channel, userdata } = data;
+    const { channel } = data;
 
     if (channel in socket.channels) {
       console.log(`[${socket.id}] ERROR: already joined `, channel);
       return;
+    }
+
+    for (const channel in socket.channels) {
+      partVoiceChannel(channel);
     }
 
     io.emit('voiceChannelJoined', {
@@ -46,6 +62,13 @@ module.exports = (io, socket) => {
   });
 
   function partVoiceChannel(channel) {
+    if (channel === null) {
+      for (const channel in socket.channels) {
+        partVoiceChannel(channel);
+      }
+      return;
+    }
+
     console.log(`[${socket.id}] partVoiceChannel `);
 
     if (!(channel in socket.channels)) {
