@@ -1,16 +1,14 @@
 const express = require('express');
 const app = express();
-const http = require('http');
-const server = http.createServer(app);
-const { Server } = require('socket.io');
-const io = new Server(server, {
+const httpServer = require('http').createServer(app);
+const io = require('socket.io')(httpServer, {
   cors: {
-    origin: 'https://kimhwan.kr',
+    origin: ['https://kimhwan.kr', 'https://www.kimhwan.kr'],
     credentials: true,
-    methods: ['GET', 'POST'],
   },
   transports: ['websocket', 'polling'],
   allowEIO3: false,
+  serveClient: false,
 });
 
 const cors = require('cors');
@@ -51,7 +49,7 @@ setTimeout(() => {
   socketEvents(io);
 
   const port = 8080;
-  server.listen(port, () => {
+  httpServer.listen(port, () => {
     console.log(`API server app listening at http://localhost:${port}`);
   });
 }, 3000); // wait for db
