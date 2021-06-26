@@ -20,6 +20,10 @@ services:
   redis-server:
     image: redis
     restart: always
+  coturn:
+    image: coturn/coturn
+    network_mode: host
+    command: [--realm=kimhwan.kr,--server-name=kimhwan.kr,--lt-cred-mech,--fingerprint,--user=turn:turn]
   node-app:
     build: .
     restart: always
