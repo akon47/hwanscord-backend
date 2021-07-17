@@ -6,6 +6,7 @@ module.exports = (io, socket) => {
   sockets[socket.id] = socket;
 
   console.log(`SignalingServer: ${socket.id} connection accepted`);
+
   socket.on('disconnect', async () => {
     console.log(`SignalingServer: ${socket.id} disconnected`);
     for (const channel in socket.channels) {
@@ -24,6 +25,52 @@ module.exports = (io, socket) => {
       }
     }
     socket.emit('getVoiceChannelPeers', { channelId: channel, peers: peers });
+  });
+
+  socket.on('createScreenShareChannel', () => {
+    console.log(`SignalingServer: ${socket.id} createScreenShareChannel`);
+
+    const screenChannel = socket.id;
+    if (screenChannel in socket.channels) {
+      console.log(`[${socket.id}] ERROR: already joined `, channel);
+      return;
+    }
+
+    for (const channel in socket.channels) {
+      partVoiceChannel(channel);
+    }
+
+    if (!(screenChannel in channels)) {
+      channels[screenChannel] = {};
+    }
+
+    channels[screenChannel][socket.id] = socket;
+    socket.channels[screenChannel] = screenChannel;
+    
+    io.emit('createScreenShareChannel', {
+      user: socket.user,
+      channelId: screenChannel,
+    });
+
+    io.emit('voiceChannelJoined', {
+      channelId: screenChannel,
+      user: socket.user,
+      socketId: socket.id,
+    });
+  });
+
+  socket.on('getScreenShareChannels', (data) => {
+    let screenShareChannels = [];
+    for(socketId in sockets) {
+      if(channels[socketId] !== undefined) {
+        screenShareChannels.push({
+          user: sockets[socketId].user,
+          channelId: socketId,
+        });
+      }
+    }
+
+    socket.emit('getScreenShareChannels', { channels: screenShareChannels });
   });
 
   socket.on('joinVoiceChannel', (data) => {
@@ -117,6 +164,36 @@ module.exports = (io, socket) => {
 
     if (peerId in sockets) {
       sockets[peerId].emit('sessionDescription', {
+        peerId: socket.id,
+        sessionDescription: sessionDescription,
+      });
+    }
+  });
+
+  socket.on('relayScreenShareICECandidate', function (config) {
+    const { peerId, iceCandidate } = config;
+    console.log(
+      `[${socket.id}] relaying screen-share ICE candidate to [${peerId}] `,
+      iceCandidate
+    );
+
+    if (peerId in sockets) {
+      sockets[peerId].emit('screenShareIceCandidate', {
+        peerId: socket.id,
+        iceCandidate: iceCandidate,
+      });
+    }
+  });
+
+  socket.on('relayScreenShareSessionDescription', function (config) {
+    const { peerId, sessionDescription } = config;
+    console.log(
+      `[${socket.id}] relaying screen-share session description to [${peerId}] `,
+      sessionDescription
+    );
+
+    if (peerId in sockets) {
+      sockets[peerId].emit('screenShareSessionDescription', {
         peerId: socket.id,
         sessionDescription: sessionDescription,
       });
