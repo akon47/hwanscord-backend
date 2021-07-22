@@ -39,4 +39,21 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    if (req.user._id === req.params.id) {
+      await usermodel
+        .remove({ _id: req.params.id })
+        .lean()
+        .exec();
+      res.status(200).end();
+    } else {
+      res.status(400).json({ message: 'cannot remove the user' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: 'sth wrong', error });
+  }
+});
+
 module.exports = router;

@@ -31,3 +31,4 @@ services:
       - "20000:8080"
     volumes:
       - ./attachments/:/app/attachments
+      - ./avatar/:/app/avatar

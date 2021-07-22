@@ -43,13 +43,11 @@ app.use('/api', docs);
 app.use('/avatar', avatar);
 app.use('/attachments', attachments);
 
-setTimeout(() => {
-  db();
+db();
 
-  socketEvents(io);
+socketEvents(io);
 
-  const port = 8080;
-  httpServer.listen(port, () => {
-    console.log(`API server app listening at http://localhost:${port}`);
-  });
-}, 3000); // wait for db
+const port = 8080;
+httpServer.listen(port, () => {
+  console.log(`API server app listening at http://localhost:${port}`);
+});
