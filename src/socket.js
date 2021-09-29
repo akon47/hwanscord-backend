@@ -2,50 +2,24 @@ const { getUserDataByToken } = require('./utils/utils.js');
 const { increaseConnection, decreaseConnection } = require('./redis-client.js');
 const signalingServer = require('./webrtc/signaling-server.js');
 
+function attachProcessEvent(event, io) {
+  process.on(event, (data) => {
+    io.emit(event, data);
+  });
+}
+
 module.exports = (io) => {
-  process.on('newMessageReceived', (data) => {
-    io.emit('newMessageReceived', data);
-  });
-
-  process.on('newChannelAdded', (data) => {
-    io.emit('newChannelAdded', data);
-  });
-
-  process.on('channelDeleted', (data) => {
-    io.emit('channelDeleted', data);
-  });
-
-  process.on('channelModified', (data) => {
-    io.emit('channelModified', data);
-  });
-
-  process.on('newVoiceChannelAdded', (data) => {
-    io.emit('newVoiceChannelAdded', data);
-  });
-
-  process.on('voiceChannelDeleted', (data) => {
-    io.emit('voiceChannelDeleted', data);
-  });
-
-  process.on('voiceChannelModified', (data) => {
-    io.emit('voiceChannelModified', data);
-  });
-
-  process.on('userAvatarChanged', (data) => {
-    io.emit('userAvatarChanged', data);
-  });
-
-  process.on('newUserSignup', (data) => {
-    io.emit('newUserSignup', data);
-  });
-
-  process.on('messageDeleted', (data) => {
-    io.emit('messageDeleted', data);
-  });
-
-  process.on('messageModified', (data) => {
-    io.emit('messageModified', data);
-  });
+  attachProcessEvent('newMessageReceived', io);
+  attachProcessEvent('newChannelAdded', io);
+  attachProcessEvent('channelDeleted', io);
+  attachProcessEvent('channelModified', io);
+  attachProcessEvent('newVoiceChannelAdded', io);
+  attachProcessEvent('voiceChannelDeleted', io);
+  attachProcessEvent('voiceChannelModified', io);
+  attachProcessEvent('userAvatarChanged', io);
+  attachProcessEvent('newUserSignup', io);
+  attachProcessEvent('messageDeleted', io);
+  attachProcessEvent('messageModified', io);
 
   io.on('connection', async (socket) => {
     const user = await getUserDataByToken(socket.handshake.auth.token);
