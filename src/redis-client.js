@@ -16,7 +16,6 @@ module.exports = {
         resolve(number);
       });
     });
-    //return redisClient.incr(userid);
   },
   decreaseConnection: (userid) => {
     return new Promise((resolve) => {
@@ -24,7 +23,6 @@ module.exports = {
         resolve(number);
       });
     });
-    //return redisClient.decr(userid);
   },
   getConnections: (userid) => {
     return new Promise((resolve) => {
@@ -32,6 +30,5 @@ module.exports = {
         resolve(number);
       });
     });
-    //return redisClient.get(userid);
   },
 };
