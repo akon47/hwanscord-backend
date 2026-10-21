@@ -14,6 +14,11 @@ for f in mongodb-uri jwt-secret mongo-root-password mongo-app-password cf-turn-k
     exit 1
   fi
 done
+# containers run as other uids (mongo 999, node 1000) and read the files through bind mounts:
+# files must be world-readable, the 0700 directory keeps them private on the host.
+chmod 700 "$SECRETS_DIR"
+chmod 644 "$SECRETS_DIR"/*
+
 mkdir -p "$DATA_DIR/uploads/avatars" "$DATA_DIR/uploads/attachments" "$DATA_DIR/mongo" /srv/hwanscord/legacy
 # the api container runs as uid 1000 (node) and must own the uploads directory
 if [ "$(stat -c %u "$DATA_DIR/uploads")" != "1000" ]; then

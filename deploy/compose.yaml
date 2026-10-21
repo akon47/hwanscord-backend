@@ -1,7 +1,9 @@
 # hwanscord backend stack on the service VM (10.10.10.75). Deployed by Jenkins to /srv/hwanscord/backend.
 #   APP_TAG=<build number> docker compose pull && docker compose up -d
 # The frontend stack (akon47/hwanscord-frontend) joins the `hwanscord` network and proxies to `hwanscord-api:8080`.
-name: hwanscord-backend
+# NOT "hwanscord-backend": the v1 stack on this VM used that project name (directory /var/www/hwanscord-backend),
+# and compose would adopt/remove its containers.
+name: hwanscord
 
 services:
   api:
