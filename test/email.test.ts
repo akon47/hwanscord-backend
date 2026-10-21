@@ -130,6 +130,24 @@ describe('verify-first signup', () => {
     expect(second.body.user.role).toBe('member');
   });
 
+  it('never logs the code', async () => {
+    const lines: string[] = [];
+    const logger = app.built.ctx.logger as unknown as { info: (...a: unknown[]) => void };
+    const original = logger.info.bind(logger);
+    logger.info = (...a: unknown[]) => {
+      lines.push(JSON.stringify(a));
+      original(...a);
+    };
+    try {
+      await app.api.post('/api/v1/auth/register/start').send({ email: 'log@example.com' }).expect(204);
+    } finally {
+      logger.info = original;
+    }
+    const code = codeFrom('log@example.com');
+    expect(lines.some((l) => l.includes('mail sent'))).toBe(true);
+    expect(lines.join(' ')).not.toContain(code);
+  });
+
   it('stores only an HMAC of the code', async () => {
     await app.api.post('/api/v1/auth/register/start').send({ email: 'a@example.com' }).expect(204);
     const code = codeFrom('a@example.com');

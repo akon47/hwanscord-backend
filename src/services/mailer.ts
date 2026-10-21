@@ -59,7 +59,8 @@ export class Mailer {
       this.logger.warn({ status: res.status }, 'resend rejected the mail');
       throw ApiError.internal('메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
-    this.logger.info({ subject: message.subject }, 'mail sent');
+    // subjects carry the 6-digit code: never log it
+    this.logger.info({ subject: message.subject.replace(/\d{6}/g, '******') }, 'mail sent');
   }
 
   /** Mails counted for today (UTC). */
