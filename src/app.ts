@@ -12,12 +12,14 @@ import { attachmentsRoutes } from './http/routes/attachments.js';
 import { authRoutes } from './http/routes/auth.js';
 import { channelsRoutes, readStatesRoutes } from './http/routes/channels.js';
 import { healthRoutes } from './http/routes/health.js';
+import { oauthRoutes } from './http/routes/oauth.js';
 import { messagesRoutes, searchRoutes } from './http/routes/messages.js';
 import { rtcRoutes } from './http/routes/rtc.js';
 import { usersRoutes } from './http/routes/users.js';
 import { uploadsStatic } from './http/uploads.js';
 import { Realtime } from './realtime/bus.js';
 import { registerGateway, type AppServer } from './realtime/gateway.js';
+import { GithubOAuth } from './services/github.js';
 import { PresenceService } from './services/presence.js';
 import { TurnService } from './services/turn.js';
 import { VoiceService } from './services/voice.js';
@@ -52,6 +54,12 @@ export function buildApp(config: Config, options: BuildOptions = {}): BuiltApp {
     presence: new PresenceService(),
     voice: new VoiceService(),
     turn: new TurnService(config.turn, logger, options.fetchImpl),
+    github: new GithubOAuth(
+      config.github,
+      `${config.publicUrl}/api/v1/auth/oauth/github/callback`,
+      logger,
+      options.fetchImpl,
+    ),
     realtime: new Realtime(io),
   };
 
@@ -74,6 +82,7 @@ export function buildApp(config: Config, options: BuildOptions = {}): BuiltApp {
   app.use(healthRoutes(ctx));
   app.use('/uploads', uploadsStatic(config.uploadDir));
   app.use('/api/v1/auth', authRoutes(ctx));
+  app.use('/api/v1/auth', oauthRoutes(ctx));
   app.use('/api/v1/users', usersRoutes(ctx));
   app.use('/api/v1/channels/:id/messages', messagesRoutes(ctx));
   app.use('/api/v1/channels', channelsRoutes(ctx));

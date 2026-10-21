@@ -27,6 +27,10 @@ services:
       CF_TURN_API_TOKEN_FILE: /run/secrets/cf-turn-api-token
       CF_ANALYTICS_TOKEN_FILE: /run/secrets/cf-analytics-token
       CF_ACCOUNT_ID: 369c866387692806999258754dd0e854
+      PUBLIC_URL: https://hwanscord.kimhwan.kr
+      # GitHub OAuth App; empty files (deploy.sh creates placeholders) = GitHub login disabled
+      GITHUB_CLIENT_ID_FILE: /run/secrets/github-client-id
+      GITHUB_CLIENT_SECRET_FILE: /run/secrets/github-client-secret
       TURN_MONTHLY_BUDGET_GB: "800"
       TURN_CREDENTIAL_TTL: "86400"
       LOG_LEVEL: info
@@ -36,6 +40,8 @@ services:
       - cf-turn-key-id
       - cf-turn-api-token
       - cf-analytics-token
+      - github-client-id
+      - github-client-secret
     volumes:
       - /srv/hwanscord/data/uploads:/data/uploads
       # legacy v1 files, only needed while running deploy/migrate-from-v1.sh
@@ -89,6 +95,10 @@ secrets:
     file: /srv/hwanscord/secrets/cf-turn-api-token
   cf-analytics-token:
     file: /srv/hwanscord/secrets/cf-analytics-token
+  github-client-id:
+    file: /srv/hwanscord/secrets/github-client-id
+  github-client-secret:
+    file: /srv/hwanscord/secrets/github-client-secret
   mongo-root-password:
     file: /srv/hwanscord/secrets/mongo-root-password
   mongo-app-password:

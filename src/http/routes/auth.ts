@@ -12,11 +12,13 @@ import { body, validate } from '../middleware/validate.js';
 const USERNAME_RE = /^[a-z0-9_.]{2,32}$/;
 const LOGIN_FAILED = '아이디 또는 비밀번호가 올바르지 않습니다.';
 
+export const usernameSchema = z
+  .string()
+  .trim()
+  .regex(USERNAME_RE, '아이디는 2~32자의 영문 소문자, 숫자, 밑줄(_), 점(.)만 사용할 수 있습니다.');
+
 export const registerSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .regex(USERNAME_RE, '아이디는 2~32자의 영문 소문자, 숫자, 밑줄(_), 점(.)만 사용할 수 있습니다.'),
+  username: usernameSchema,
   password: z
     .string()
     .min(8, '비밀번호는 8자 이상이어야 합니다.')

@@ -125,7 +125,7 @@ describe('migrate-legacy', () => {
     await fs.access(path.join(uploadDir, 'avatars', `${u1.toHexString()}-legacy.png`));
     const friend = await User.findById(u2).lean();
     expect(friend?.role).toBe('member');
-    expect(await bcrypt.compare('secret', friend!.passwordHash)).toBe(true);
+    expect(await bcrypt.compare('secret', friend!.passwordHash as string)).toBe(true);
 
     const channels = await Channel.find().sort({ type: 1, position: 1 }).lean();
     expect(channels.map((c) => [c.type, c.name, c.position])).toEqual([

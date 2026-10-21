@@ -26,6 +26,13 @@ export interface Config {
     credentialTtl: number;
   };
   attachmentGcIntervalMs: number;
+  publicUrl: string;
+  github: {
+    clientId: string | undefined;
+    clientSecret: string | undefined;
+    oauthBaseUrl: string;
+    apiBaseUrl: string;
+  };
 }
 
 function readSecret(env: NodeJS.ProcessEnv, name: string): string | undefined {
@@ -80,5 +87,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       credentialTtl: Number(env.TURN_CREDENTIAL_TTL ?? 86400),
     },
     attachmentGcIntervalMs: Number(env.ATTACHMENT_GC_INTERVAL_MS ?? 60 * 60 * 1000),
+    publicUrl: (env.PUBLIC_URL ?? 'http://localhost:5173').replace(/\/+$/, ''),
+    github: {
+      clientId: readSecret(env, 'GITHUB_CLIENT_ID'),
+      clientSecret: readSecret(env, 'GITHUB_CLIENT_SECRET'),
+      oauthBaseUrl: (env.GITHUB_OAUTH_BASE_URL ?? 'https://github.com').replace(/\/+$/, ''),
+      apiBaseUrl: (env.GITHUB_API_BASE_URL ?? 'https://api.github.com').replace(/\/+$/, ''),
+    },
   };
 }

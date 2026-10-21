@@ -1,6 +1,7 @@
 import type { Config } from './config.js';
 import type { Logger } from './logger.js';
 import type { Realtime } from './realtime/bus.js';
+import type { GithubOAuth } from './services/github.js';
 import type { PresenceService } from './services/presence.js';
 import type { TurnService } from './services/turn.js';
 import type { VoiceService } from './services/voice.js';
@@ -11,5 +12,6 @@ export interface AppContext {
   presence: PresenceService;
   voice: VoiceService;
   turn: TurnService;
+  github: GithubOAuth;
   realtime: Realtime;
 }

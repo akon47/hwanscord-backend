@@ -31,7 +31,6 @@ export function safeExtension(originalName: string, contentType: string): string
  * Re-decode when the result round-trips cleanly (Korean file names otherwise become mojibake).
  */
 export function decodeOriginalName(name: string): string {
-   
   if (!/[\u0080-\u00ff]/.test(name)) return name;
   const decoded = Buffer.from(name, 'latin1').toString('utf8');
   return decoded.includes('\ufffd') ? name : decoded;

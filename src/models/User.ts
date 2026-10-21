@@ -4,11 +4,20 @@ export const USER_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 export type UserRole = 'admin' | 'member';
 
+export interface IOAuthAccount {
+  provider: 'github';
+  providerId: string;
+  login: string;
+  email: string | null;
+  linkedAt: Date;
+}
+
 export interface IUser {
   _id: Types.ObjectId;
   username: string;
   displayName: string;
-  passwordHash: string;
+  /** null for accounts created through OAuth that never set a password */
+  passwordHash: string | null;
   /** legacy v1 field, only present until the first successful login after migration */
   password?: string;
   avatarUrl: string | null;
@@ -17,6 +26,8 @@ export interface IUser {
   customStatus: string | null;
   aboutMe: string | null;
   settings: Record<string, unknown>;
+  /** absent (not []) for users who never linked an identity, so the unique index ignores them */
+  oauthAccounts?: IOAuthAccount[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,7 +38,7 @@ const userSchema = new Schema<IUser>(
   {
     username: { type: String, required: true, unique: true, trim: true, maxlength: 50 },
     displayName: { type: String, required: true, trim: true, maxlength: 32 },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String, default: null },
     password: { type: String, required: false, select: false },
     avatarUrl: { type: String, default: null },
     role: { type: String, enum: ['admin', 'member'], default: 'member' },
@@ -35,8 +46,30 @@ const userSchema = new Schema<IUser>(
     customStatus: { type: String, default: null, maxlength: 128 },
     aboutMe: { type: String, default: null, maxlength: 190 },
     settings: { type: Schema.Types.Mixed, default: () => ({}) },
+    oauthAccounts: {
+      type: [
+        new Schema<IOAuthAccount>(
+          {
+            provider: { type: String, enum: ['github'], required: true },
+            providerId: { type: String, required: true },
+            login: { type: String, required: true },
+            email: { type: String, default: null },
+            linkedAt: { type: Date, default: () => new Date() },
+          },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
   },
   { timestamps: true, collection: 'users' },
+);
+
+// one account per external identity. Partial on $exists (allowed in MongoDB 4.4 partial filters, unlike $in):
+// users without identities (field absent or []) are not indexed at all.
+userSchema.index(
+  { 'oauthAccounts.provider': 1, 'oauthAccounts.providerId': 1 },
+  { unique: true, partialFilterExpression: { 'oauthAccounts.providerId': { $exists: true } } },
 );
 
 export const User = mongoose.model<IUser>('User', userSchema);

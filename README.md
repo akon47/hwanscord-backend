@@ -39,7 +39,7 @@ VM 쪽 구성:
 - `/srv/hwanscord/backups/` — `backup.sh` 결과 (매일 mongodump 14개, 매주 uploads tar 4개 보관)
 - 컨테이너: `hwanscord-api`(:8080 공개), `hwanscord-mongo`(비공개), 네트워크 `hwanscord`(프론트 nginx 가 `hwanscord-api:8080` 으로 프록시)
 
-### 비밀 파일 (`/srv/hwanscord/secrets/`, 0600, 값은 저장소에 두지 않음)
+### 비밀 파일 (`/srv/hwanscord/secrets/` 0700 디렉터리, 파일 0644 — 컨테이너 uid 가 읽어야 함, 값은 저장소에 두지 않음)
 
 | 파일 | 내용 |
 |---|---|
@@ -50,6 +50,11 @@ VM 쪽 구성:
 | `cf-turn-key-id` | Cloudflare Realtime TURN 키 ID |
 | `cf-turn-api-token` | 그 키의 API 토큰 |
 | `cf-analytics-token` | Account Analytics Read 권한만 있는 Cloudflare API 토큰 (TURN 사용량 조회) |
+| `github-client-id` | (선택) GitHub OAuth App Client ID. 비어 있으면 GitHub 로그인 꺼짐 (deploy.sh 가 빈 파일을 만들어 둠) |
+| `github-client-secret` | (선택) 그 앱의 Client Secret |
+
+GitHub OAuth App 설정: Homepage `https://hwanscord.kimhwan.kr`, Authorization callback URL
+`https://hwanscord.kimhwan.kr/api/v1/auth/oauth/github/callback`. 키를 넣은 뒤 `docker compose up -d api` 로 재시작합니다.
 
 운영자 PC 원본은 `~/.homelab/services/hwanscord/` 에 둡니다.
 

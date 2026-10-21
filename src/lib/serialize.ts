@@ -22,6 +22,8 @@ export interface UserDto extends UserRefDto {
   aboutMe: string | null;
   createdAt: string;
   settings?: Record<string, unknown>;
+  hasPassword?: boolean;
+  connections?: { provider: 'github'; login: string }[];
 }
 
 export interface ChannelDto {
@@ -103,7 +105,11 @@ export function toUser(user: IUser, presence: Presence, options: { self?: boolea
     aboutMe: user.aboutMe ?? null,
     createdAt: toIso(user.createdAt) ?? new Date(0).toISOString(),
   };
-  if (options.self) base.settings = user.settings ?? {};
+  if (options.self) {
+    base.settings = user.settings ?? {};
+    base.hasPassword = !!(user.passwordHash || user.password);
+    base.connections = (user.oauthAccounts ?? []).map((a) => ({ provider: a.provider, login: a.login }));
+  }
   return base;
 }
 

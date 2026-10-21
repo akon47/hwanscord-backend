@@ -13,7 +13,8 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(password: string, hash: string | null | undefined): Promise<boolean> {
+  if (!hash) return false;
   // bcryptjs understands the $2a$/$2b$ hashes produced by the v1 server's native bcrypt
   return bcrypt.compare(password, hash);
 }
@@ -32,7 +33,9 @@ export function verifyToken(config: Config, token: string): TokenPayload {
     throw ApiError.unauthorized('토큰이 유효하지 않습니다.');
   }
   if (!decoded || typeof decoded !== 'object') throw ApiError.unauthorized('토큰이 유효하지 않습니다.');
-  const { sub, username } = decoded as Record<string, unknown>;
+  const { sub, username, purpose } = decoded as Record<string, unknown>;
+  // OAuth state / pending-signup tokens are signed with the same secret but are never sessions
+  if (purpose !== undefined) throw ApiError.unauthorized('토큰이 유효하지 않습니다.');
   if (typeof sub !== 'string' || !isObjectId(sub)) throw ApiError.unauthorized('토큰이 유효하지 않습니다.');
   return { sub, username: typeof username === 'string' ? username : '' };
 }

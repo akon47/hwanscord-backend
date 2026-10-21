@@ -52,6 +52,8 @@ interface User {
   aboutMe: string | null;       // ≤190 chars
   createdAt: string;
   settings?: Record<string, unknown>; // only present on /users/me and auth responses (client preferences, ≤ 4 KB)
+  hasPassword?: boolean;              // self only: false for accounts created through GitHub without a password yet
+  connections?: { provider: 'github'; login: string }[]; // self only: linked OAuth identities
 }
 
 interface UserRef { id: string; username: string; displayName: string; avatarUrl: string | null }
@@ -176,6 +178,34 @@ DM channels are visible only to their two participants (404 for anyone else). Vo
 Files are served from `/uploads/...` with `Cache-Control: public, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`,
 and `Content-Disposition: attachment` for anything that is not image/*, video/*, audio/*, text/plain or application/pdf.
 
+### OAuth (GitHub)
+
+Only GitHub is supported. Enabled when `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are both set (empty = unset).
+Register the GitHub OAuth App callback URL as `${PUBLIC_URL}/api/v1/auth/oauth/github/callback`.
+
+| method | path | response |
+|---|---|---|
+| GET | `/auth/providers` | `{ github: boolean }` (no auth) |
+| GET | `/auth/oauth/github/start?next=/path` | `302` to GitHub authorize (scope `read:user user:email`). Sets cookie `hs_oauth_state` (nonce; HttpOnly, SameSite=Lax, Secure in production, path `/api/v1/auth/oauth`, 10 min). `state` = JWT (purpose `oauth-state`, 10 min) `{ nonce, next, mode: 'login' }`. `next` must be a relative path starting with `/` (not `//`), otherwise `/`. Provider disabled → redirect `#error=disabled`. |
+| POST | `/auth/oauth/github/link` (auth) | `{ url }` — same as start but `mode: 'link'` with the caller's `userId`; also sets the state cookie. The client navigates to `url`. |
+| GET | `/auth/oauth/github/callback?code&state` | Verifies cookie nonce == state nonce (and clears the cookie), exchanges the code, reads `/user` and `/user/emails` (primary verified email is stored, never used to match accounts). Always redirects to `${PUBLIC_URL}/oauth/callback#…`: |
+
+Callback outcomes (URL fragment, `URLSearchParams` encoded, so tokens never reach server logs):
+
+- identity already linked → `#token=<session jwt>&next=<next>`
+- `login` mode, unknown identity → `#signup=<jwt purpose oauth-signup, 15 min: githubId, login, name, avatarUrl, email>&next=<next>`
+- `link` mode → identity linked to the user → `#linked=github&next=<next>`; owned by someone else → `#error=already_linked`
+- failures → `#error=state_mismatch | denied | exchange_failed | disabled`
+
+| method | path | body | response |
+|---|---|---|---|
+| POST | `/auth/oauth/github/complete` | `{ signupToken, username, displayName? }` | `201 { token, user }` — username rules as register, `409` when taken or when the GitHub identity got linked meanwhile; no password (`hasPassword: false`); GitHub avatar (≤ 2 MB) imported best effort. Rate limited like register. |
+| DELETE | `/users/me/oauth/github` | | `{ user }`; `409 CONFLICT` "마지막 로그인 수단은 해제할 수 없습니다." when the user has no password |
+
+`PATCH /users/me/password` does not require `currentPassword` while `hasPassword` is false (sets the first password).
+Password login of an account without a password fails with the generic 401 message.
+Session JWTs never carry a `purpose` claim; tokens with one (state/signup) are rejected as sessions.
+
 ### RTC
 
 | method | path | response |
@@ -259,6 +289,9 @@ A socket disconnect = `voice:leave` + presence recomputation. One user may have 
 | `TURN_MONTHLY_BUDGET_GB` | `800` | stop handing out TURN credentials above this |
 | `TURN_CREDENTIAL_TTL` | `86400` | seconds |
 | `APP_VERSION` | `dev` | reported by `/healthz` |
+| `PUBLIC_URL` | `http://localhost:5173` | public origin of the web app (OAuth redirect_uri and result redirects) |
+| `GITHUB_CLIENT_ID(_FILE)`, `GITHUB_CLIENT_SECRET(_FILE)` | unset → GitHub login disabled | GitHub OAuth App |
+| `GITHUB_OAUTH_BASE_URL`, `GITHUB_API_BASE_URL` | `https://github.com`, `https://api.github.com` | overrides for local end-to-end tests only |
 | `LOG_LEVEL` | `info` | pino |
 
 ## Legacy data (v1 → v2 migration)
