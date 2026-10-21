@@ -1,0 +1,8 @@
+[Unit]
+Description=hwanscord nightly backup (mongodump + weekly uploads tar)
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/bin/bash -c '/srv/hwanscord/backend/backup.sh >> /srv/hwanscord/backups/backup.log 2>&1'

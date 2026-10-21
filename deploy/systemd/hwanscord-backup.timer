@@ -1,0 +1,9 @@
+[Unit]
+Description=hwanscord nightly backup at 04:15 KST
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 Asia/Seoul
+Persistent=true
+
+[Install]
+WantedBy=timers.target

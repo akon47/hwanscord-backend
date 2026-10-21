@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Nightly backup: mongodump (gzip archive) of the hwanscord database, keep the last 14; weekly tar of uploads, keep 4.
-# Install on the VM:  (crontab -l; echo '15 4 * * * /srv/hwanscord/backend/backup.sh >> /srv/hwanscord/backups/backup.log 2>&1') | crontab -
+# Scheduled by a systemd timer (the VM is a minimal Ubuntu without cron), installed once as root:
+#   cp /srv/hwanscord/backend/systemd/hwanscord-backup.* /etc/systemd/system/ && systemctl daemon-reload \n#     && systemctl enable --now hwanscord-backup.timer
 set -euo pipefail
 
 BACKUP_DIR=/srv/hwanscord/backups
