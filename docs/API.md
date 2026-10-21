@@ -236,7 +236,7 @@ Session invalidation: users have `tokenVersion` (default 0); session JWTs carry 
 token whose `tv` differs from the user's (tokens without `tv` count as 0). Bumped by password reset, password change and admin
 temporary passwords; live sockets of that user are disconnected.
 
-Mail links: `${PUBLIC_URL}/verify-email?token=…`, `${PUBLIC_URL}/reset-password?token=…`. Korean HTML + plain-text bodies.
+Mail links: `${PUBLIC_URL}/verify-email#token=…`, `${PUBLIC_URL}/reset-password#token=…` — the token is in the URL fragment, which browsers never send to a server, so it stays out of the gateway, frontend and ELK access logs. The pages also accept the older `?token=` form. Korean HTML + plain-text bodies.
 
 ### Admin (role `admin`)
 

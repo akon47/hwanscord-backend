@@ -64,7 +64,7 @@ afterAll(() => app.stop());
 function tokenFrom(to: string, path: '/verify-email' | '/reset-password'): string {
   const mail = [...sent].reverse().find((m) => m.to === to);
   expect(mail, `mail to ${to}`).toBeTruthy();
-  const m = mail!.text.match(new RegExp(`${PUBLIC_URL}${path}\\?token=([A-Za-z0-9_-]+)`));
+  const m = mail!.text.match(new RegExp(`${PUBLIC_URL}${path}\#token=([A-Za-z0-9_-]+)`));
   expect(m, 'link in mail').toBeTruthy();
   return decodeURIComponent(m![1]!);
 }

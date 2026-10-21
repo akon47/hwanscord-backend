@@ -10,19 +10,19 @@ const displayNameOf = (u: MailUser) => u.displayName || u.username;
 
 export async function sendVerificationMail(ctx: AppContext, user: MailUser, email: string): Promise<void> {
   const token = await issueToken(user._id, 'verify', email);
-  const url = `${ctx.config.publicUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  const url = `${ctx.config.publicUrl}/verify-email#token=${encodeURIComponent(token)}`;
   await ctx.mailer.send(verifyMail(email, displayNameOf(user), url));
 }
 
 export async function sendChangeMail(ctx: AppContext, user: MailUser, newEmail: string): Promise<void> {
   const token = await issueToken(user._id, 'change', newEmail);
-  const url = `${ctx.config.publicUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  const url = `${ctx.config.publicUrl}/verify-email#token=${encodeURIComponent(token)}`;
   await ctx.mailer.send(changeMail(newEmail, displayNameOf(user), url));
 }
 
 export async function sendResetMail(ctx: AppContext, user: MailUser, email: string): Promise<void> {
   const token = await issueToken(user._id, 'reset', email);
-  const url = `${ctx.config.publicUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  const url = `${ctx.config.publicUrl}/reset-password#token=${encodeURIComponent(token)}`;
   await ctx.mailer.send(resetMail(email, displayNameOf(user), url));
 }
 
