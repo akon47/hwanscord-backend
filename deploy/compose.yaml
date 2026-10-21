@@ -16,7 +16,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: "8080"
-      TRUST_PROXY: "1"
+      # two trusted hops in front of the api: the frontend nginx container and the nginx gateway (LXC 101)
+      TRUST_PROXY: "2"
       UPLOAD_DIR: /data/uploads
       MONGODB_URI_FILE: /run/secrets/mongodb-uri
       JWT_SECRET_FILE: /run/secrets/jwt-secret
@@ -36,7 +37,7 @@ services:
     volumes:
       - /srv/hwanscord/data/uploads:/data/uploads
       # legacy v1 files, only needed while running deploy/migrate-from-v1.sh
-      - /srv/hwanscord/legacy:/legacy:ro
+      - /srv/hwanscord/legacy:/legacy
     networks:
       - hwanscord
     logging:

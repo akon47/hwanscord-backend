@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 # hwanscord-backend — multi-stage build. Jenkins runs:
 #   docker build --target test  .            (lint + typecheck + vitest, needs network for mongodb-memory-server)
 #   docker build --target runtime -t akon47/hwanscord-backend:<tag> --build-arg APP_VERSION=<tag> .
@@ -22,7 +21,7 @@ RUN npm run build
 # ---------- test: quality gates ----------
 FROM deps AS test
 # mongod (downloaded by mongodb-memory-server) needs libcurl + CA certs on Debian 12
-RUN apt-get update && apt-get install -y --no-install-recommends libcurl4 ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends libcurl4 libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV MONGOMS_DOWNLOAD_DIR=/tmp/mongoms \
     MONGOMS_VERSION=7.0.14 \
     MONGOMS_DISTRO=debian-12 \
