@@ -1,38 +1,65 @@
 {
   "name": "hwanscord-backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "version": "2.0.0",
+  "description": "HWANSCORD API server: REST + Socket.IO gateway for the Discord-like toy project",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch src/index.ts",
+    "dev:mem": "tsx scripts/dev-server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/src/index.js",
+    "migrate:legacy": "node dist/scripts/migrate-legacy.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/akon47/hwanscord-backend.git"
   },
-  "author": "kimhwan",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/akon47/hwanscord-backend/issues"
-  },
-  "homepage": "https://github.com/akon47/hwanscord-backend#readme",
+  "author": "Kim, Hwan <akon47@naver.com>",
+  "license": "MIT",
   "dependencies": {
-    "bcrypt": "^5.0.1",
-    "body-parser": "^1.19.0",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "express": "^4.17.1",
-    "jsonwebtoken": "^8.5.1",
-    "md5-file": "^5.0.0",
-    "mongoose": "^5.12.11",
-    "multer": "^1.4.2",
-    "redis": "^3.1.2",
-    "socket.io": "^4.1.2",
-    "swagger-ui-express": "^4.1.6"
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mime-types": "^3.0.1",
+    "mongoose": "^8.9.5",
+    "multer": "^2.0.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "sharp": "^0.33.5",
+    "socket.io": "^4.8.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "eslint": "^7.28.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^3.4.0",
-    "prettier": "2.3.1"
+    "@eslint/js": "^9.17.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/mime-types": "^2.1.4",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "mongodb-memory-server": "^10.1.3",
+    "pino-pretty": "^13.0.0",
+    "prettier": "^3.4.2",
+    "socket.io-client": "^4.8.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2",
+    "vitest": "^3.0.5"
   }
 }
