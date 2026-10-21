@@ -195,6 +195,8 @@ describe('oauth (github)', () => {
     expect(done.body.user.connections).toEqual([{ provider: 'github', login: 'Octo-Cat' }]);
     expect(done.body.user.avatarUrl).toMatch(/^\/uploads\/avatars\/.+\.webp$/);
     expect(done.body.user.role).toBe('admin');
+    // GitHub's primary verified email is stored as verified
+    expect(done.body.user).toMatchObject({ email: 'octo-cat@users.example', emailVerified: true });
 
     // the same signup token cannot create a second account
     await app.api
@@ -223,6 +225,14 @@ describe('oauth (github)', () => {
       .post('/api/v1/auth/oauth/github/complete')
       .send({ signupToken: f.get('signup'), username: 'taken' })
       .expect(409);
+    // an email already used by another account is not taken over
+    await User.updateOne({ username: 'taken' }, { $set: { email: 'other@users.example' } });
+    const g = await githubRoundTrip({ id: 203, login: 'other', name: null, avatar_url: null });
+    const ok = await app.api
+      .post('/api/v1/auth/oauth/github/complete')
+      .send({ signupToken: g.get('signup'), username: 'other2' })
+      .expect(201);
+    expect(ok.body.user).toMatchObject({ email: null, emailVerified: false });
     expect(res.body.error.code).toBe('CONFLICT');
   });
 
@@ -286,12 +296,13 @@ describe('oauth (github)', () => {
     const refused = await app.api.delete('/api/v1/users/me/oauth/github').set(auth(token)).expect(409);
     expect(refused.body.error.message).toBe('마지막 로그인 수단은 해제할 수 없습니다.');
 
-    await app.api
+    const set = await app.api
       .patch('/api/v1/users/me/password')
       .set(auth(token))
       .send({ newPassword: 'first-password-1' })
-      .expect(204);
-    const me = await app.api.get('/api/v1/auth/me').set(auth(token)).expect(200);
+      .expect(200);
+    const fresh = set.body.token as string;
+    const me = await app.api.get('/api/v1/auth/me').set(auth(fresh)).expect(200);
     expect(me.body.user.hasPassword).toBe(true);
     await app.api
       .post('/api/v1/auth/login')
@@ -301,10 +312,10 @@ describe('oauth (github)', () => {
     // once a password exists, changing it requires the current one again
     await app.api
       .patch('/api/v1/users/me/password')
-      .set(auth(token))
+      .set(auth(fresh))
       .send({ newPassword: 'second-password-2' })
-      .expect(401);
-    await app.api.delete('/api/v1/users/me/oauth/github').set(auth(token)).expect(200);
+      .expect(400);
+    await app.api.delete('/api/v1/users/me/oauth/github').set(auth(fresh)).expect(200);
   });
 });
 

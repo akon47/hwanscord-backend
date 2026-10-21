@@ -71,7 +71,7 @@ export async function startTestApp(
 export async function register(app: TestApp, username: string, displayName?: string): Promise<Session> {
   const res = await app.api
     .post('/api/v1/auth/register')
-    .send({ username, password: `${username}-password-1`, displayName })
+    .send({ username, email: `${username}@test.example`, password: `${username}-password-1`, displayName })
     .expect(201);
   return { token: res.body.token, user: res.body.user };
 }

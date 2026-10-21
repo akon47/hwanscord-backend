@@ -33,6 +33,8 @@ Every error response has this shape and a matching HTTP status:
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | avatar not an image |
 | 429 | `RATE_LIMITED` | too many requests (`Retry-After` header) |
 | 500 | `INTERNAL` | unexpected |
+| 503 | `MAIL_DISABLED` | the endpoint needs to send mail and no Resend key is configured |
+| 503 | `MAIL_QUOTA` | today's global mail budget (`MAIL_DAILY_LIMIT`) is used up; nothing was sent |
 
 ## Types
 
@@ -54,6 +56,8 @@ interface User {
   settings?: Record<string, unknown>; // only present on /users/me and auth responses (client preferences, ≤ 4 KB)
   hasPassword?: boolean;              // self only: false for accounts created through GitHub without a password yet
   connections?: { provider: 'github'; login: string }[]; // self only: linked OAuth identities
+  email?: string | null;               // self only
+  emailVerified?: boolean;             // self only
 }
 
 interface UserRef { id: string; username: string; displayName: string; avatarUrl: string | null }
@@ -123,8 +127,8 @@ All endpoints except `POST /auth/register`, `POST /auth/login` and `GET /healthz
 
 | method | path | body | response |
 |---|---|---|---|
-| POST | `/auth/register` | `{ username, password, displayName? }` | `201 { token, user }` — username `^[a-z0-9_.]{2,32}$`, password 8–72 chars. The **first** account ever created becomes `admin`. |
-| POST | `/auth/login` | `{ username, password }` | `200 { token, user }` — `401 UNAUTHORIZED` with message "아이디 또는 비밀번호가 올바르지 않습니다." on failure (same message for unknown user). Legacy bcrypt hashes (`$2a$/$2b$`) must keep working. |
+| POST | `/auth/register` | `{ username, email, password, displayName? }` | `201 { token, user }` — username `^[a-z0-9_.]{2,32}$`, email ≤ 254 (stored lowercased), password 8–72 chars. `409` "이미 사용 중인 아이디입니다." / "이미 사용 중인 이메일입니다.". The **first** account ever created becomes `admin`. A verification mail is sent (failure to send never fails the registration); the account is usable immediately. |
+| POST | `/auth/login` | `{ username, password }` | `200 { token, user }` — `username` may be the username **or** the email (contains `@`). `401 UNAUTHORIZED` with message "아이디 또는 비밀번호가 올바르지 않습니다." on failure (same message for unknown user / no password). Legacy bcrypt hashes (`$2a$/$2b$`) must keep working. |
 | GET | `/auth/me` | | `200 { user }` (includes `settings`) |
 
 Rate limit: 10 requests / minute / IP on register+login.
@@ -136,7 +140,7 @@ Rate limit: 10 requests / minute / IP on register+login.
 | GET | `/users` | | `{ users: User[] }` sorted by displayName (presence included) |
 | GET | `/users/:id` | | `{ user }` |
 | PATCH | `/users/me` | any of `{ displayName, aboutMe, customStatus, status, settings }` | `{ user }`; broadcasts `user:update` (and `presence:update` when status changed) |
-| PATCH | `/users/me/password` | `{ currentPassword, newPassword }` | `204` |
+| PATCH | `/users/me/password` | `{ currentPassword, newPassword }` | `200 { token }` — every other session is signed out (`tokenVersion` bump); the response carries a fresh token for this client. Wrong current password → `400 VALIDATION_ERROR` (`fieldErrors.currentPassword`), never 401 (the client signs out on 401). |
 | PUT | `/users/me/avatar` | multipart field `avatar` (png/jpeg/gif/webp ≤ 8 MB) | `{ user }` — stored as 256×256 WebP (animated GIF stays animated), old file deleted; broadcasts `user:update` |
 | DELETE | `/users/me/avatar` | | `{ user }` |
 
@@ -205,6 +209,41 @@ Callback outcomes (URL fragment, `URLSearchParams` encoded, so tokens never reac
 `PATCH /users/me/password` does not require `currentPassword` while `hasPassword` is false (sets the first password).
 Password login of an account without a password fails with the generic 401 message.
 Session JWTs never carry a `purpose` claim; tokens with one (state/signup) are rejected as sessions.
+
+### Email
+
+Mail goes through Resend (`POST https://api.resend.com/emails`). Without `RESEND_API_KEY` mail is disabled: registration still
+works, endpoints that exist only to send mail answer `503 MAIL_DISABLED`. A global budget of `MAIL_DAILY_LIMIT` mails per UTC day
+(counted in `meta`) protects the free tier; when exhausted `503 MAIL_QUOTA` and nothing is sent.
+
+User fields (self serialization only — nobody else ever sees an email): `email: string | null`, `emailVerified: boolean`.
+Unique index on `email`, partial on `{ email: { $type: 'string' } }` (accounts without email are not indexed).
+
+One-time tokens: 32 random bytes, base64url, sent only by mail; the server stores `sha256(token)` in `emailtokens`
+`{ userId, purpose: 'verify'|'reset'|'change', email, hash, expiresAt (TTL index), usedAt, createdAt }`.
+`verify`/`change` live 24 h, `reset` 30 min. Every token is single use; issuing a new token of the same purpose voids the user's
+older unused ones.
+
+| method | path | body | response |
+|---|---|---|---|
+| POST | `/auth/verify-email` | `{ token }` | `{ user }` — `verify`: marks the (unchanged) email verified; `change`: replaces the email with the confirmed new one (`409` if it got taken meanwhile). Invalid/used/expired → `400 BAD_REQUEST` "링크가 만료되었거나 이미 사용되었습니다." |
+| POST | `/users/me/email/resend-verification` (auth) | | `204`; `400` without an email or when already verified; `429` more than once per 60 s or 5 per day |
+| PATCH | `/users/me/email` (auth) | `{ email, currentPassword? }` | `204` — `currentPassword` required when the account has a password (wrong → `400 VALIDATION_ERROR`, `fieldErrors.currentPassword`). `409` when used by another account, `400` when it is already my email. Sends a `change` mail to the **new** address; nothing changes until it is confirmed. |
+| POST | `/auth/password/forgot` | `{ login }` (username or email) | **always `204`** (no account enumeration, also for unknown/unverified/mail problems). Sends a reset mail only when the account has a verified email. Limits: 5/hour/IP, 3/hour/account (excess is silently dropped). |
+| POST | `/auth/password/reset` | `{ token, newPassword }` | `204` — sets the password, uses the token, bumps `tokenVersion` (all sessions and sockets of the user are signed out). Invalid/used/expired → `400`. |
+
+Session invalidation: users have `tokenVersion` (default 0); session JWTs carry `tv`. `requireAuth` and the socket gateway reject a
+token whose `tv` differs from the user's (tokens without `tv` count as 0). Bumped by password reset, password change and admin
+temporary passwords; live sockets of that user are disconnected.
+
+Mail links: `${PUBLIC_URL}/verify-email?token=…`, `${PUBLIC_URL}/reset-password?token=…`. Korean HTML + plain-text bodies.
+
+### Admin (role `admin`)
+
+| method | path | response |
+|---|---|---|
+| GET | `/admin/users` | `{ users: (User & { email, emailVerified, hasPassword, connections })[] }` |
+| POST | `/admin/users/:id/temporary-password` | `{ temporaryPassword }` (12 chars, shown once) — bumps the user's `tokenVersion`; `400` for yourself (use password change) |
 
 ### RTC
 
@@ -289,6 +328,10 @@ A socket disconnect = `voice:leave` + presence recomputation. One user may have 
 | `TURN_MONTHLY_BUDGET_GB` | `800` | stop handing out TURN credentials above this |
 | `TURN_CREDENTIAL_TTL` | `86400` | seconds |
 | `APP_VERSION` | `dev` | reported by `/healthz` |
+| `RESEND_API_KEY(_FILE)` | unset → mail disabled | Resend API key (sending access) |
+| `MAIL_FROM` | `HWANSCORD <noreply@kimhwan.kr>` | sender |
+| `MAIL_DAILY_LIMIT` | `80` | global mails per UTC day |
+| `RESEND_API_BASE_URL` | `https://api.resend.com` | override for local tests only |
 | `PUBLIC_URL` | `http://localhost:5173` | public origin of the web app (OAuth redirect_uri and result redirects) |
 | `GITHUB_CLIENT_ID(_FILE)`, `GITHUB_CLIENT_SECRET(_FILE)` | unset → GitHub login disabled | GitHub OAuth App |
 | `GITHUB_OAUTH_BASE_URL`, `GITHUB_API_BASE_URL` | `https://github.com`, `https://api.github.com` | overrides for local end-to-end tests only |

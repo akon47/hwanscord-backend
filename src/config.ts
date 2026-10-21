@@ -27,6 +27,12 @@ export interface Config {
   };
   attachmentGcIntervalMs: number;
   publicUrl: string;
+  mail: {
+    apiKey: string | undefined;
+    from: string;
+    dailyLimit: number;
+    apiBaseUrl: string;
+  };
   github: {
     clientId: string | undefined;
     clientSecret: string | undefined;
@@ -87,6 +93,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       credentialTtl: Number(env.TURN_CREDENTIAL_TTL ?? 86400),
     },
     attachmentGcIntervalMs: Number(env.ATTACHMENT_GC_INTERVAL_MS ?? 60 * 60 * 1000),
+    mail: {
+      apiKey: readSecret(env, 'RESEND_API_KEY'),
+      from: env.MAIL_FROM?.trim() || 'HWANSCORD <noreply@kimhwan.kr>',
+      dailyLimit: Number(env.MAIL_DAILY_LIMIT ?? 80),
+      apiBaseUrl: (env.RESEND_API_BASE_URL ?? 'https://api.resend.com').replace(/\/+$/, ''),
+    },
     publicUrl: (env.PUBLIC_URL ?? 'http://localhost:5173').replace(/\/+$/, ''),
     github: {
       clientId: readSecret(env, 'GITHUB_CLIENT_ID'),

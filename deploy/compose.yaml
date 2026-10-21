@@ -31,6 +31,10 @@ services:
       # GitHub OAuth App; empty files (deploy.sh creates placeholders) = GitHub login disabled
       GITHUB_CLIENT_ID_FILE: /run/secrets/github-client-id
       GITHUB_CLIENT_SECRET_FILE: /run/secrets/github-client-secret
+      # Resend; an empty file disables mail (registration still works)
+      RESEND_API_KEY_FILE: /run/secrets/resend-api-key
+      MAIL_FROM: HWANSCORD <noreply@kimhwan.kr>
+      MAIL_DAILY_LIMIT: "80"
       TURN_MONTHLY_BUDGET_GB: "800"
       TURN_CREDENTIAL_TTL: "86400"
       LOG_LEVEL: info
@@ -42,6 +46,7 @@ services:
       - cf-analytics-token
       - github-client-id
       - github-client-secret
+      - resend-api-key
     volumes:
       - /srv/hwanscord/data/uploads:/data/uploads
       # legacy v1 files, only needed while running deploy/migrate-from-v1.sh
@@ -99,6 +104,8 @@ secrets:
     file: /srv/hwanscord/secrets/github-client-id
   github-client-secret:
     file: /srv/hwanscord/secrets/github-client-secret
+  resend-api-key:
+    file: /srv/hwanscord/secrets/resend-api-key
   mongo-root-password:
     file: /srv/hwanscord/secrets/mongo-root-password
   mongo-app-password:

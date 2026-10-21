@@ -7,7 +7,7 @@ import type { AppContext } from '../../context.js';
 import { ApiError } from '../../lib/errors.js';
 import { toUser } from '../../lib/serialize.js';
 import { User, type IUser } from '../../models/User.js';
-import { signToken } from '../../services/auth.js';
+import { sessionToken } from '../../services/auth.js';
 import { storeAvatar } from '../../services/avatars.js';
 import { GithubOAuthError } from '../../services/github.js';
 import { currentUser, requireAuth } from '../middleware/auth.js';
@@ -171,7 +171,7 @@ export function oauthRoutes(ctx: AppContext): Router {
           { $set: { 'oauthAccounts.$.login': profile.login } },
         ).exec();
       }
-      const token = signToken(config, { sub: owner._id.toHexString(), username: owner.username });
+      const token = sessionToken(config, owner);
       return res.redirect(302, resultUrl({ token, next }));
     }
 
@@ -207,10 +207,14 @@ export function oauthRoutes(ctx: AppContext): Router {
     }
     const isFirst = (await User.estimatedDocumentCount().exec()) === 0;
     const displayName = (input.displayName ?? claims.name ?? input.username).slice(0, 32);
+    // GitHub's primary verified email counts as verified here, unless another account already uses it
+    const githubEmail = claims.email?.trim().toLowerCase() || null;
+    const emailFree = githubEmail ? !(await User.exists({ email: githubEmail }).exec()) : false;
     const created = await User.create({
       username: input.username,
       displayName,
       passwordHash: null,
+      ...(emailFree && githubEmail ? { email: githubEmail, emailVerifiedAt: new Date() } : {}),
       role: isFirst ? 'admin' : 'member',
       oauthAccounts: [
         {
@@ -237,7 +241,7 @@ export function oauthRoutes(ctx: AppContext): Router {
         }
       }
     }
-    const token = signToken(config, { sub: user._id.toHexString(), username: user.username });
+    const token = sessionToken(config, user);
     ctx.realtime.emitAll('user:create', toUser(user, 'offline'));
     res.status(201).json({ token, user: toUser(user, 'offline', { self: true }) });
   });

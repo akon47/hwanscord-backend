@@ -52,6 +52,7 @@ VM 쪽 구성:
 | `cf-analytics-token` | Account Analytics Read 권한만 있는 Cloudflare API 토큰 (TURN 사용량 조회) |
 | `github-client-id` | (선택) GitHub OAuth App Client ID. 비어 있으면 GitHub 로그인 꺼짐 (deploy.sh 가 빈 파일을 만들어 둠) |
 | `github-client-secret` | (선택) 그 앱의 Client Secret |
+| `resend-api-key` | (선택) Resend API 키(Sending access). 비어 있으면 메일 꺼짐: 가입은 되지만 인증·비밀번호 찾기 메일이 나가지 않음 |
 
 GitHub OAuth App 설정: Homepage `https://hwanscord.kimhwan.kr`, Authorization callback URL
 `https://hwanscord.kimhwan.kr/api/v1/auth/oauth/github/callback`. 키를 넣은 뒤 `docker compose up -d api` 로 재시작합니다.

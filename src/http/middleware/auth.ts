@@ -19,6 +19,8 @@ export function requireAuth(ctx: AppContext): RequestHandler {
     const payload = verifyToken(ctx.config, token);
     const user = await User.findById(payload.sub).lean<IUser>().exec();
     if (!user) throw ApiError.unauthorized('사용자를 찾을 수 없습니다.');
+    // signed out by a password reset/change or a temporary password
+    if ((user.tokenVersion ?? 0) !== (payload.tv ?? 0)) throw ApiError.unauthorized('다시 로그인해 주세요.');
     req.user = user;
     next();
   };

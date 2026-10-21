@@ -18,6 +18,11 @@ export class Realtime {
     this.io.to(rooms).emit(event, payload);
   }
 
+  /** Drops every live socket of a user (their sessions were invalidated). */
+  disconnectUser(userId: string): void {
+    this.io.in(`user:${userId}`).disconnectSockets(true);
+  }
+
   emitToSocket(socketId: string, event: string, payload: unknown): void {
     this.io.to(socketId).emit(event, payload);
   }

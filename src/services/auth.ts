@@ -7,6 +7,8 @@ import { isObjectId } from '../lib/ids.js';
 export interface TokenPayload {
   sub: string;
   username: string;
+  /** the user's tokenVersion when issued; tokens without it count as 0 */
+  tv?: number;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -17,6 +19,18 @@ export async function verifyPassword(password: string, hash: string | null | und
   if (!hash) return false;
   // bcryptjs understands the $2a$/$2b$ hashes produced by the v1 server's native bcrypt
   return bcrypt.compare(password, hash);
+}
+
+/** Session token for a user (carries the current tokenVersion as `tv`). */
+export function sessionToken(
+  config: Config,
+  user: { _id: { toHexString(): string }; username: string; tokenVersion?: number },
+): string {
+  return signToken(config, {
+    sub: user._id.toHexString(),
+    username: user.username,
+    tv: user.tokenVersion ?? 0,
+  });
 }
 
 export function signToken(config: Config, payload: TokenPayload): string {
@@ -37,7 +51,8 @@ export function verifyToken(config: Config, token: string): TokenPayload {
   // OAuth state / pending-signup tokens are signed with the same secret but are never sessions
   if (purpose !== undefined) throw ApiError.unauthorized('토큰이 유효하지 않습니다.');
   if (typeof sub !== 'string' || !isObjectId(sub)) throw ApiError.unauthorized('토큰이 유효하지 않습니다.');
-  return { sub, username: typeof username === 'string' ? username : '' };
+  const tv = (decoded as Record<string, unknown>).tv;
+  return { sub, username: typeof username === 'string' ? username : '', tv: typeof tv === 'number' ? tv : 0 };
 }
 
 export function extractBearer(header: string | undefined): string | null {

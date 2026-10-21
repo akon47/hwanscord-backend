@@ -35,7 +35,7 @@ describe('auth', () => {
     await register(app, 'dup');
     const res = await app.api
       .post('/api/v1/auth/register')
-      .send({ username: 'dup', password: 'dup-password-1' })
+      .send({ username: 'dup', email: 'other@test.example', password: 'dup-password-1' })
       .expect(409);
     expect(res.body.error.code).toBe('CONFLICT');
   });

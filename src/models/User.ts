@@ -26,6 +26,11 @@ export interface IUser {
   customStatus: string | null;
   aboutMe: string | null;
   settings: Record<string, unknown>;
+  /** lowercased; absent for accounts without email (the unique index only covers strings) */
+  email?: string | null;
+  emailVerifiedAt?: Date | null;
+  /** bumped to sign out every session (password reset/change, temporary password) */
+  tokenVersion?: number;
   /** absent (not []) for users who never linked an identity, so the unique index ignores them */
   oauthAccounts?: IOAuthAccount[];
   createdAt: Date;
@@ -46,6 +51,9 @@ const userSchema = new Schema<IUser>(
     customStatus: { type: String, default: null, maxlength: 128 },
     aboutMe: { type: String, default: null, maxlength: 190 },
     settings: { type: Schema.Types.Mixed, default: () => ({}) },
+    email: { type: String, lowercase: true, trim: true, maxlength: 254 },
+    emailVerifiedAt: { type: Date, default: null },
+    tokenVersion: { type: Number, default: 0 },
     oauthAccounts: {
       type: [
         new Schema<IOAuthAccount>(
@@ -64,6 +72,9 @@ const userSchema = new Schema<IUser>(
   },
   { timestamps: true, collection: 'users' },
 );
+
+// one account per email; $type is allowed in MongoDB 4.4 partial filters (unlike $in / $ne)
+userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
 
 // one account per external identity. Partial on $exists (allowed in MongoDB 4.4 partial filters, unlike $in):
 // users without identities (field absent or []) are not indexed at all.

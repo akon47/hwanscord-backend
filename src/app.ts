@@ -11,6 +11,7 @@ import { errorHandler, notFoundHandler } from './http/middleware/errors.js';
 import { attachmentsRoutes } from './http/routes/attachments.js';
 import { authRoutes } from './http/routes/auth.js';
 import { channelsRoutes, readStatesRoutes } from './http/routes/channels.js';
+import { adminRoutes } from './http/routes/admin.js';
 import { healthRoutes } from './http/routes/health.js';
 import { oauthRoutes } from './http/routes/oauth.js';
 import { messagesRoutes, searchRoutes } from './http/routes/messages.js';
@@ -20,6 +21,7 @@ import { uploadsStatic } from './http/uploads.js';
 import { Realtime } from './realtime/bus.js';
 import { registerGateway, type AppServer } from './realtime/gateway.js';
 import { GithubOAuth } from './services/github.js';
+import { Mailer } from './services/mailer.js';
 import { PresenceService } from './services/presence.js';
 import { TurnService } from './services/turn.js';
 import { VoiceService } from './services/voice.js';
@@ -60,6 +62,7 @@ export function buildApp(config: Config, options: BuildOptions = {}): BuiltApp {
       logger,
       options.fetchImpl,
     ),
+    mailer: new Mailer(config.mail, logger, options.fetchImpl),
     realtime: new Realtime(io),
   };
 
@@ -107,6 +110,7 @@ export function buildApp(config: Config, options: BuildOptions = {}): BuiltApp {
   app.use('/api/v1/read-states', readStatesRoutes(ctx));
   app.use('/api/v1/attachments', attachmentsRoutes(ctx));
   app.use('/api/v1/rtc', rtcRoutes(ctx));
+  app.use('/api/v1/admin', adminRoutes(ctx));
   app.use(notFoundHandler);
   app.use(errorHandler(logger));
 

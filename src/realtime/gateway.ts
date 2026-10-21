@@ -55,6 +55,7 @@ export function registerGateway(io: AppServer, ctx: AppContext): void {
       const payload = verifyToken(ctx.config, raw);
       const user = await User.findById(payload.sub).lean<IUser>().exec();
       if (!user) throw ApiError.unauthorized();
+      if ((user.tokenVersion ?? 0) !== (payload.tv ?? 0)) throw ApiError.unauthorized();
       socket.data.user = user;
       socket.data.typingAt = new Map();
       next();

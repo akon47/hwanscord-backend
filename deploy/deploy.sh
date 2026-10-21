@@ -17,7 +17,7 @@ done
 # containers run as other uids (mongo 999, node 1000) and read the files through bind mounts:
 # files must be world-readable, the 0700 directory keeps them private on the host.
 # optional secrets: compose needs the files to exist; empty means the feature is off
-for f in github-client-id github-client-secret; do
+for f in github-client-id github-client-secret resend-api-key; do
   [ -e "$SECRETS_DIR/$f" ] || : > "$SECRETS_DIR/$f"
 done
 chmod 700 "$SECRETS_DIR"

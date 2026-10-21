@@ -56,12 +56,15 @@ describe('users', () => {
       .patch('/api/v1/users/me/password')
       .set(auth(a.token))
       .send({ currentPassword: 'wrong-wrong-wrong', newPassword: 'new-password-123' })
-      .expect(401);
-    await app.api
+      .expect(400); // not 401: that would sign the client out
+    const changed = await app.api
       .patch('/api/v1/users/me/password')
       .set(auth(a.token))
       .send({ currentPassword: 'alice-password-1', newPassword: 'new-password-123' })
-      .expect(204);
+      .expect(200);
+    // the old token is signed out, the returned one works
+    await app.api.get('/api/v1/auth/me').set(auth(a.token)).expect(401);
+    await app.api.get('/api/v1/auth/me').set(auth(changed.body.token)).expect(200);
     await app.api
       .post('/api/v1/auth/login')
       .send({ username: 'alice', password: 'new-password-123' })
