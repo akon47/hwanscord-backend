@@ -81,6 +81,8 @@ export function buildApp(config: Config, options: BuildOptions = {}): BuiltApp {
         paths: [
           'req.headers.authorization',
           'req.headers.cookie',
+          // pages opened from mail links carry one-time tokens in their URL
+          'req.headers.referer',
           'res.headers.location',
           'res.headers["set-cookie"]',
         ],
