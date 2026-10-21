@@ -57,6 +57,31 @@ async function exists(p: string): Promise<boolean> {
   }
 }
 
+const INDEX_NOT_FOUND = 27;
+const NAMESPACE_NOT_FOUND = 26;
+
+/**
+ * Drops an index, retrying while other index builds on the collection are still running
+ * (MongoDB 4.4 refuses dropIndex during a background build). Only "not found" is ignored;
+ * anything else that persists is thrown instead of silently leaving the index in place.
+ */
+async function dropIndexIfExists(
+  collection: { dropIndex(name: string): Promise<unknown> },
+  name: string,
+): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await collection.dropIndex(name);
+      return;
+    } catch (err) {
+      const code = (err as { code?: number }).code;
+      if (code === INDEX_NOT_FOUND || code === NAMESPACE_NOT_FOUND) return;
+      if (attempt >= 20) throw err;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+}
+
 export async function migrateLegacy(options: MigrateOptions): Promise<MigrateResult> {
   const log = options.log ?? (() => undefined);
   const db = mongoose.connection.db;
@@ -78,6 +103,8 @@ export async function migrateLegacy(options: MigrateOptions): Promise<MigrateRes
     return { ...result, skipped: true };
   }
   await ensureUploadDirs(options.uploadDir);
+  // let Mongoose finish its own background index builds first, so they cannot race the index cleanup below
+  await Promise.all([User, Channel, Message, Attachment, ReadState, Meta].map((model) => model.init()));
 
   // ---- users -------------------------------------------------------------
   const users = db.collection<Raw>('users');
@@ -139,11 +166,7 @@ export async function migrateLegacy(options: MigrateOptions): Promise<MigrateRes
   // ---- channels ----------------------------------------------------------
   const channels = db.collection<Raw>('channels');
   // v1 had a unique index on channelName; unsetting the field would collide on null
-  try {
-    await channels.dropIndex('channelName_1');
-  } catch {
-    /* index absent */
-  }
+  await dropIndexIfExists(channels, 'channelName_1');
   const legacyChannels = await channels
     .find({ type: { $exists: false } })
     .sort({ insertedDate: 1, _id: 1 })
