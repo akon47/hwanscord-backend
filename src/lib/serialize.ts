@@ -26,6 +26,7 @@ export interface UserDto extends UserRefDto {
   connections?: { provider: 'github'; login: string }[];
   email?: string | null;
   emailVerified?: boolean;
+  emailRequired?: boolean;
 }
 
 export interface ChannelDto {
@@ -113,6 +114,7 @@ export function toUser(user: IUser, presence: Presence, options: { self?: boolea
     base.connections = (user.oauthAccounts ?? []).map((a) => ({ provider: a.provider, login: a.login }));
     base.email = user.email ?? null;
     base.emailVerified = !!(user.email && user.emailVerifiedAt);
+    base.emailRequired = !base.emailVerified;
   }
   return base;
 }

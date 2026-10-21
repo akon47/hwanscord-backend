@@ -9,6 +9,7 @@ import { Channel, type IChannel } from '../models/Channel.js';
 import { User, type IUser } from '../models/User.js';
 import { extractBearer, verifyToken } from '../services/auth.js';
 import { canSee } from '../services/channels.js';
+import { hasVerifiedEmail } from '../http/middleware/auth.js';
 
 export interface SocketData {
   user: IUser;
@@ -47,21 +48,28 @@ const MAX_SIGNAL_BYTES = 128 * 1024;
 
 export function registerGateway(io: AppServer, ctx: AppContext): void {
   io.use(async (socket, next) => {
+    let user: IUser | null = null;
     try {
       const auth = socket.handshake.auth as { token?: unknown } | undefined;
       const raw =
         typeof auth?.token === 'string' ? auth.token : extractBearer(socket.handshake.headers.authorization);
       if (!raw) throw ApiError.unauthorized();
       const payload = verifyToken(ctx.config, raw);
-      const user = await User.findById(payload.sub).lean<IUser>().exec();
+      user = await User.findById(payload.sub).lean<IUser>().exec();
       if (!user) throw ApiError.unauthorized();
       if ((user.tokenVersion ?? 0) !== (payload.tv ?? 0)) throw ApiError.unauthorized();
-      socket.data.user = user;
-      socket.data.typingAt = new Map();
-      next();
     } catch {
       next(new Error('unauthorized'));
+      return;
     }
+    // not a logout: the client shows the email gate and reconnects once the email is verified
+    if (!hasVerifiedEmail(user)) {
+      next(new Error('email_required'));
+      return;
+    }
+    socket.data.user = user;
+    socket.data.typingAt = new Map();
+    next();
   });
 
   io.on('connection', (socket) => {

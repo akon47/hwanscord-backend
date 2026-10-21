@@ -21,25 +21,6 @@ describe('auth', () => {
     expect(second.user.displayName).toBe('둘째');
   });
 
-  it('rejects invalid usernames and short passwords with field errors', async () => {
-    const res = await app.api
-      .post('/api/v1/auth/register')
-      .send({ username: 'Bad Name!', password: 'short' })
-      .expect(400);
-    expect(res.body.error.code).toBe('VALIDATION_ERROR');
-    expect(res.body.error.details.fieldErrors.username).toBeDefined();
-    expect(res.body.error.details.fieldErrors.password).toBeDefined();
-  });
-
-  it('refuses duplicate usernames with 409', async () => {
-    await register(app, 'dup');
-    const res = await app.api
-      .post('/api/v1/auth/register')
-      .send({ username: 'dup', email: 'other@test.example', password: 'dup-password-1' })
-      .expect(409);
-    expect(res.body.error.code).toBe('CONFLICT');
-  });
-
   it('logs in and returns the same generic message for unknown user and wrong password', async () => {
     await register(app, 'loginuser');
     const ok = await app.api
@@ -56,7 +37,7 @@ describe('auth', () => {
       .post('/api/v1/auth/login')
       .send({ username: 'ghost', password: 'nope-nope-nope' })
       .expect(401);
-    expect(wrong.body.error.message).toBe('아이디 또는 비밀번호가 올바르지 않습니다.');
+    expect(wrong.body.error.message).toBe('이메일(아이디) 또는 비밀번호가 올바르지 않습니다.');
     expect(unknown.body.error.message).toBe(wrong.body.error.message);
   });
 
@@ -77,6 +58,10 @@ describe('auth', () => {
     expect(stored?.password).toBeUndefined();
     const me = await app.api.get('/api/v1/auth/me').set(auth(res.body.token)).expect(200);
     expect(me.body.user.displayName).toBe('Legacy User');
+    // no verified email yet: the account is gated
+    expect(me.body.user.emailRequired).toBe(true);
+    const gated = await app.api.get('/api/v1/channels').set(auth(res.body.token)).expect(403);
+    expect(gated.body.error.code).toBe('EMAIL_REQUIRED');
   });
 
   it('protects routes and reports 401 for missing or bad tokens', async () => {

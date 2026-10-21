@@ -215,7 +215,7 @@ describe('oauth (github)', () => {
       .post('/api/v1/auth/login')
       .send({ username: 'octo_cat', password: 'whatever-123' })
       .expect(401);
-    expect(login.body.error.message).toBe('아이디 또는 비밀번호가 올바르지 않습니다.');
+    expect(login.body.error.message).toBe('이메일(아이디) 또는 비밀번호가 올바르지 않습니다.');
   });
 
   it('refuses a taken username at completion', async () => {
@@ -232,7 +232,10 @@ describe('oauth (github)', () => {
       .post('/api/v1/auth/oauth/github/complete')
       .send({ signupToken: g.get('signup'), username: 'other2' })
       .expect(201);
-    expect(ok.body.user).toMatchObject({ email: null, emailVerified: false });
+    expect(ok.body.user).toMatchObject({ email: null, emailVerified: false, emailRequired: true });
+    // no usable email: the account is gated until one is verified
+    const gated = await app.api.get('/api/v1/channels').set(auth(ok.body.token)).expect(403);
+    expect(gated.body.error.code).toBe('EMAIL_REQUIRED');
     expect(res.body.error.code).toBe('CONFLICT');
   });
 

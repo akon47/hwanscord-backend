@@ -2,7 +2,9 @@
  * Local development server backed by an in-memory MongoDB (no Docker needed).
  *   npm run dev:mem            → http://localhost:8080
  *   SEED=1 npm run dev:mem     → also seeds demo users/channels/messages
- * Demo accounts (SEED=1): admin / admin1234 (admin), hwan / hwan1234, alice / alice1234, bob / bob1234
+ * Demo accounts (SEED=1), password <name>1234, login with <name>@hwanscord.test:
+ *   admin (admin), hwan, alice, bob — verified emails
+ *   legacy — no email (v1-style account: logs in with the username and hits the email gate)
  */
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Types } from 'mongoose';
@@ -17,18 +19,26 @@ import { parseMentions } from '../src/services/mentions.js';
 
 async function seed(log: (m: string) => void): Promise<void> {
   if ((await User.estimatedDocumentCount().exec()) > 0) return;
-  const mk = async (username: string, displayName: string, role: 'admin' | 'member', about: string | null) =>
+  const mk = async (
+    username: string,
+    displayName: string,
+    role: 'admin' | 'member',
+    about: string | null,
+    withEmail = true,
+  ) =>
     User.create({
       username,
       displayName,
       role,
       passwordHash: await hashPassword(`${username}1234`),
       aboutMe: about,
+      ...(withEmail ? { email: `${username}@hwanscord.test`, emailVerifiedAt: new Date() } : {}),
     });
   const admin = await mk('admin', '관리자', 'admin', '서버 관리자입니다.');
   const hwan = await mk('hwan', '환', 'member', 'Vue 를 배우며 만든 환스코드 ✨');
   const alice = await mk('alice', 'Alice', 'member', null);
   const bob = await mk('bob', 'Bob', 'member', '🎮 게임 좋아함');
+  await mk('legacy', '옛날사람', 'member', 'v1 시절 계정', false);
   const general = await Channel.create({
     type: 'text',
     name: 'general',
@@ -113,7 +123,7 @@ async function seed(log: (m: string) => void): Promise<void> {
     );
   }
   log(
-    'seeded demo data: users admin/hwan/alice/bob (password = <name>1234), channels general/random/lounge/game-room',
+    'seeded demo data: users admin/hwan/alice/bob (<name>@hwanscord.test) + legacy (no email), password <name>1234',
   );
 }
 

@@ -3,8 +3,9 @@ import type { Types } from 'mongoose';
 import { EmailToken, type EmailTokenPurpose, type IEmailToken } from '../models/EmailToken.js';
 
 export const TOKEN_TTL_MS: Record<EmailTokenPurpose, number> = {
-  verify: 24 * 60 * 60 * 1000,
-  change: 24 * 60 * 60 * 1000,
+  // signup/change are 6-digit codes issued by emailCodes.ts; only `reset` uses link tokens
+  signup: 10 * 60 * 1000,
+  change: 10 * 60 * 1000,
   reset: 30 * 60 * 1000,
 };
 

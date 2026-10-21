@@ -27,6 +27,7 @@ Every error response has this shape and a matching HTTP status:
 | 400 | `BAD_REQUEST` | other client errors |
 | 401 | `UNAUTHORIZED` | missing/invalid/expired token, wrong password |
 | 403 | `FORBIDDEN` | not allowed (not author/admin, not a DM participant) |
+| 403 | `EMAIL_REQUIRED` | the account has no verified email yet; only the endpoints listed under *Email gate* work |
 | 404 | `NOT_FOUND` | unknown id |
 | 409 | `CONFLICT` | duplicate username / channel name |
 | 413 | `PAYLOAD_TOO_LARGE` | upload too big |
@@ -58,6 +59,7 @@ interface User {
   connections?: { provider: 'github'; login: string }[]; // self only: linked OAuth identities
   email?: string | null;               // self only
   emailVerified?: boolean;             // self only
+  emailRequired?: boolean;             // self only: true until a verified email is set (see Email gate)
 }
 
 interface UserRef { id: string; username: string; displayName: string; avatarUrl: string | null }
@@ -121,17 +123,20 @@ the server fills `mentions`/`mentionEveryone` from them on create/update.
 
 ## REST endpoints
 
-All endpoints except `POST /auth/register`, `POST /auth/login` and `GET /healthz` require auth.
+All endpoints except the signup/login/password-reset ones under *Auth*, `GET /auth/providers`, the OAuth redirects and `GET /healthz` require auth.
 
 ### Auth
 
 | method | path | body | response |
 |---|---|---|---|
-| POST | `/auth/register` | `{ username, email, password, displayName? }` | `201 { token, user }` — username `^[a-z0-9_.]{2,32}$`, email ≤ 254 (stored lowercased), password 8–72 chars. `409` "이미 사용 중인 아이디입니다." / "이미 사용 중인 이메일입니다.". The **first** account ever created becomes `admin`. A verification mail is sent (failure to send never fails the registration); the account is usable immediately. |
-| POST | `/auth/login` | `{ username, password }` | `200 { token, user }` — `username` may be the username **or** the email (contains `@`). `401 UNAUTHORIZED` with message "아이디 또는 비밀번호가 올바르지 않습니다." on failure (same message for unknown user / no password). Legacy bcrypt hashes (`$2a$/$2b$`) must keep working. |
+| POST | `/auth/register/start` | `{ email }` | **always `204`** (no account enumeration). New address → mails a 6-digit code (purpose `signup`, 10 min, 5 wrong attempts, a new request replaces the previous code). Address that already has an account → mails "이미 가입된 이메일입니다 — 로그인하거나 비밀번호를 재설정하세요" instead (no code works for it). `429` more than once per 60 s per email or 5/hour/IP; `503 MAIL_DISABLED / MAIL_QUOTA`. |
+| POST | `/auth/register/verify` | `{ email, code }` | `{ signupToken }` — JWT (purpose `email-signup`, 30 min) carrying the email. Wrong code → `400 BAD_REQUEST` "인증 코드가 올바르지 않습니다." with `details.remainingAttempts`; after 5 wrong attempts or 10 min the code is void → `400` "인증 코드가 만료되었습니다. 코드를 다시 받아 주세요." (`remainingAttempts: 0`). |
+| POST | `/auth/register` | `{ signupToken, password, displayName?, username? }` | `201 { token, user }` — `emailVerifiedAt` set. `username` optional: when absent a free one is derived from the email local part (lowercased, sanitized to `^[a-z0-9_.]{2,32}$`, numeric suffix on collision). `409` when the email got an account meanwhile or the given username is taken. `401` invalid/expired signup token. The **first** account ever created becomes `admin`. |
+| GET | `/auth/username-available?username=` | | `{ available: boolean, suggestion: string }` — `suggestion` is a free, valid handle close to the input (the input itself when available) |
+| POST | `/auth/login` | `{ login, password }` | `200 { token, user }` — `login` is the email (case-insensitive) or, for accounts without one, the username; `username` is accepted as an alias of `login`. `401 UNAUTHORIZED` "이메일(아이디) 또는 비밀번호가 올바르지 않습니다." for every failure. Legacy bcrypt hashes (`$2a$/$2b$`) keep working. |
 | GET | `/auth/me` | | `200 { user }` (includes `settings`) |
 
-Rate limit: 10 requests / minute / IP on register+login.
+Rate limit: 10 requests / minute / IP on register/verify/login.
 
 ### Users
 
@@ -139,7 +144,7 @@ Rate limit: 10 requests / minute / IP on register+login.
 |---|---|---|---|
 | GET | `/users` | | `{ users: User[] }` sorted by displayName (presence included) |
 | GET | `/users/:id` | | `{ user }` |
-| PATCH | `/users/me` | any of `{ displayName, aboutMe, customStatus, status, settings }` | `{ user }`; broadcasts `user:update` (and `presence:update` when status changed) |
+| PATCH | `/users/me` | any of `{ username, displayName, aboutMe, customStatus, status, settings }` | `{ user }`; broadcasts `user:update` (and `presence:update` when status changed) |
 | PATCH | `/users/me/password` | `{ currentPassword, newPassword }` | `200 { token }` — every other session is signed out (`tokenVersion` bump); the response carries a fresh token for this client. Wrong current password → `400 VALIDATION_ERROR` (`fieldErrors.currentPassword`), never 401 (the client signs out on 401). |
 | PUT | `/users/me/avatar` | multipart field `avatar` (png/jpeg/gif/webp ≤ 8 MB) | `{ user }` — stored as 256×256 WebP (animated GIF stays animated), old file deleted; broadcasts `user:update` |
 | DELETE | `/users/me/avatar` | | `{ user }` |
@@ -212,31 +217,38 @@ Session JWTs never carry a `purpose` claim; tokens with one (state/signup) are r
 
 ### Email
 
-Mail goes through Resend (`POST https://api.resend.com/emails`). Without `RESEND_API_KEY` mail is disabled: registration still
-works, endpoints that exist only to send mail answer `503 MAIL_DISABLED`. A global budget of `MAIL_DAILY_LIMIT` mails per UTC day
-(counted in `meta`) protects the free tier; when exhausted `503 MAIL_QUOTA` and nothing is sent.
+The email is the login ID and must be verified before it is attached to an account. Mail goes through Resend
+(`POST https://api.resend.com/emails`). Without `RESEND_API_KEY` mail is disabled: endpoints that send mail answer
+`503 MAIL_DISABLED`. A global budget of `MAIL_DAILY_LIMIT` mails per UTC day (counted in `meta`) protects the free tier;
+when exhausted `503 MAIL_QUOTA` and nothing is sent.
 
-User fields (self serialization only — nobody else ever sees an email): `email: string | null`, `emailVerified: boolean`.
-Unique index on `email`, partial on `{ email: { $type: 'string' } }` (accounts without email are not indexed).
+Self-only user fields: `email: string | null`, `emailVerified: boolean`, `emailRequired: boolean`. Nobody else ever sees an
+email. Unique index on `email`, partial on `{ email: { $type: 'string' } }`. An email is stored only once verified.
 
-One-time tokens: 32 random bytes, base64url, sent only by mail; the server stores `sha256(token)` in `emailtokens`
-`{ userId, purpose: 'verify'|'reset'|'change', email, hash, expiresAt (TTL index), usedAt, createdAt }`.
-`verify`/`change` live 24 h, `reset` 30 min. Every token is single use; issuing a new token of the same purpose voids the user's
-older unused ones.
+**6-digit codes** (`signup`, `change`): stored in `emailtokens` only as `HMAC-SHA256(JWT_SECRET, purpose|email|code|tokenId)`,
+10 min TTL, at most 5 wrong attempts, single use; requesting a new code voids the previous one. **Link tokens** (`reset`):
+32 random bytes, base64url, stored as SHA-256, 30 min, single use, delivered as `${PUBLIC_URL}/reset-password#token=…`
+(URL fragment, never sent to servers).
 
 | method | path | body | response |
 |---|---|---|---|
-| POST | `/auth/verify-email` | `{ token }` | `{ user }` — `verify`: marks the (unchanged) email verified; `change`: replaces the email with the confirmed new one (`409` if it got taken meanwhile). Invalid/used/expired → `400 BAD_REQUEST` "링크가 만료되었거나 이미 사용되었습니다." |
-| POST | `/users/me/email/resend-verification` (auth) | | `204`; `400` without an email or when already verified; `429` more than once per 60 s or 5 per day |
-| PATCH | `/users/me/email` (auth) | `{ email, currentPassword? }` | `204` — `currentPassword` required when the account has a password (wrong → `400 VALIDATION_ERROR`, `fieldErrors.currentPassword`). `409` when used by another account, `400` when it is already my email. Sends a `change` mail to the **new** address; nothing changes until it is confirmed. |
-| POST | `/auth/password/forgot` | `{ login }` (username or email) | **always `204`** (no account enumeration, also for unknown/unverified/mail problems). Sends a reset mail only when the account has a verified email. Limits: 5/hour/IP, 3/hour/account (excess is silently dropped). |
-| POST | `/auth/password/reset` | `{ token, newPassword }` | `204` — sets the password, uses the token, bumps `tokenVersion` (all sessions and sockets of the user are signed out). Invalid/used/expired → `400`. |
+| POST | `/users/me/email` (auth, allowed while gated) | `{ email, currentPassword? }` | `204` — sends a code (purpose `change`) to that address. `currentPassword` is required when the account has a password (wrong → `400 VALIDATION_ERROR`, `fieldErrors.currentPassword`). `409` used by another account, `400` it is already my verified email. `429` once per 60 s per user / 5 per hour per IP. `503` mail off / quota. |
+| POST | `/users/me/email/verify` (auth, allowed while gated) | `{ code }` | `{ user }` — sets `email` + `emailVerifiedAt`, lifts the gate, emits `user:update` to my own sockets. Wrong code → `400` with `details.remainingAttempts`; void code → `400`; `409` when the address got taken meanwhile. |
+| POST | `/auth/password/forgot` | `{ login }` (email or username) | **always `204`**. Mails a reset link only when the account has a verified email. 5/hour/IP, 3/hour/account (silently dropped). |
+| POST | `/auth/password/reset` | `{ token, newPassword }` | `204` — sets the password, uses the token, bumps `tokenVersion`. Invalid/used/expired → `400`. |
+
+### Email gate
+
+Accounts without a verified email (legacy accounts, GitHub signups whose GitHub email was missing, unverified or already taken)
+have `emailRequired: true`. Until it is lifted every authenticated REST call answers `403 EMAIL_REQUIRED`, except:
+`GET /auth/me`, `GET /users/me`, `POST /users/me/email`, `POST /users/me/email/verify`, `PATCH /users/me/password`,
+`POST /auth/oauth/github/link`, `DELETE /users/me/oauth/github` (logout is client-side; `/auth/providers`, `/healthz` need no auth).
+The Socket.IO handshake of a gated user fails with `connect_error` message `"email_required"` — the client must not treat it
+as a logout and reconnects after verifying.
 
 Session invalidation: users have `tokenVersion` (default 0); session JWTs carry `tv`. `requireAuth` and the socket gateway reject a
 token whose `tv` differs from the user's (tokens without `tv` count as 0). Bumped by password reset, password change and admin
 temporary passwords; live sockets of that user are disconnected.
-
-Mail links: `${PUBLIC_URL}/verify-email#token=…`, `${PUBLIC_URL}/reset-password#token=…` — the token is in the URL fragment, which browsers never send to a server, so it stays out of the gateway, frontend and ELK access logs. The pages also accept the older `?token=` form. Korean HTML + plain-text bodies.
 
 ### Admin (role `admin`)
 
@@ -255,7 +267,8 @@ Mail links: `${PUBLIC_URL}/verify-email#token=…`, `${PUBLIC_URL}/reset-passwor
 ## Socket.IO
 
 Connect with `io(origin, { path: '/socket.io/', auth: { token }, transports: ['websocket', 'polling'] })`.
-Invalid token → `connect_error` whose `message` is `"unauthorized"`; the client must log out.
+Invalid token → `connect_error` whose `message` is `"unauthorized"`; the client must log out. A gated account (no verified email)
+→ `connect_error` `"email_required"`; the client shows the email gate instead and reconnects after verifying.
 
 Every socket joins room `user:<userId>`. Text/voice channel events go to **all** connected sockets; DM events go only to
 the two participants' user rooms.

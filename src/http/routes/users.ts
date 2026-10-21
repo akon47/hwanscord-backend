@@ -6,9 +6,10 @@ import { toUser } from '../../lib/serialize.js';
 import { USER_STATUSES, User, type IUser } from '../../models/User.js';
 import { hashPassword, sessionToken, verifyPassword } from '../../services/auth.js';
 import { removeAvatarFile, storeAvatar } from '../../services/avatars.js';
-import { invalidateSessions, sendChangeMail, sendVerificationMail } from '../../services/accountMail.js';
-import { countIssued } from '../../services/emailTokens.js';
-import { emailSchema } from './auth.js';
+import { invalidateSessions, sendChangeCode } from '../../services/accountMail.js';
+import { checkCode, codeSentWithin } from '../../services/emailCodes.js';
+import { codeError, codeSchema, emailSchema, usernameSchema } from './auth.js';
+import { makeRateLimiter } from '../middleware/rateLimit.js';
 import { currentUser, requireAuth } from '../middleware/auth.js';
 import { avatarUpload } from '../middleware/upload.js';
 import { body, params, validate } from '../middleware/validate.js';
@@ -26,6 +27,7 @@ const nullableText = (max: number) =>
 
 export const patchMeSchema = z
   .object({
+    username: usernameSchema.optional(),
     displayName: z.string().trim().min(1, '표시 이름을 입력하세요.').max(32).optional(),
     aboutMe: nullableText(190).optional(),
     customStatus: nullableText(128).optional(),
@@ -47,6 +49,8 @@ export const changeEmailSchema = z.object({
   email: emailSchema,
   currentPassword: z.string().min(1).max(72).optional(),
 });
+
+const emailCodeSchema = z.object({ code: codeSchema });
 
 /** 400 (not 401): a 401 would make the client treat the session as expired and sign out. */
 function wrongCurrentPassword(): ApiError {
@@ -99,6 +103,11 @@ export function usersRoutes(ctx: AppContext): Router {
     const $set: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(input)) if (v !== undefined) $set[k] = v;
     if (Object.keys($set).length === 0) throw ApiError.validation('변경할 항목이 없습니다.');
+    if (input.username !== undefined && input.username !== me.username) {
+      if (await User.exists({ username: input.username, _id: { $ne: me._id } }).exec()) {
+        throw ApiError.conflict('이미 사용 중인 사용자명입니다.');
+      }
+    }
     const updated = await User.findByIdAndUpdate(me._id, { $set }, { new: true }).lean<IUser>().exec();
     if (!updated) throw ApiError.notFound();
     broadcastUserUpdate(ctx, updated, input.status !== undefined && input.status !== me.status);
@@ -117,33 +126,46 @@ export function usersRoutes(ctx: AppContext): Router {
     res.json({ token: sessionToken(ctx.config, updated) });
   });
 
-  router.post('/me/email/resend-verification', async (req, res) => {
-    const me = currentUser(req);
-    if (!me.email) throw ApiError.badRequest('등록된 이메일이 없습니다.');
-    if (me.emailVerifiedAt) throw ApiError.badRequest('이미 인증된 이메일입니다.');
-    if (!ctx.mailer.enabled) throw ApiError.mailDisabled();
-    const now = Date.now();
-    if ((await countIssued(me._id, 'verify', new Date(now - 60_000))) > 0) {
-      throw ApiError.rateLimited('인증 메일은 1분에 한 번만 보낼 수 있어요.');
-    }
-    if ((await countIssued(me._id, 'verify', new Date(now - 24 * 60 * 60_000))) >= 5) {
-      throw ApiError.rateLimited('오늘은 인증 메일을 더 보낼 수 없어요. 내일 다시 시도해 주세요.');
-    }
-    await sendVerificationMail(ctx, me, me.email);
-    res.status(204).end();
-  });
+  const emailIpLimiter = makeRateLimiter(ctx.config, { windowMs: 60 * 60_000, limit: 5 });
 
-  router.patch('/me/email', validate({ body: changeEmailSchema }), async (req, res) => {
+  // set or change the email: a code goes to the new address, nothing changes until it is entered
+  router.post('/me/email', emailIpLimiter, validate({ body: changeEmailSchema }), async (req, res) => {
     const me = currentUser(req);
     const input = body(req, changeEmailSchema);
     await assertCurrentPassword(me._id, input.currentPassword);
-    if (me.email === input.email) throw ApiError.badRequest('지금 쓰고 있는 이메일입니다.');
+    if (me.email === input.email && me.emailVerifiedAt)
+      throw ApiError.badRequest('지금 쓰고 있는 이메일입니다.');
     if (await User.exists({ email: input.email, _id: { $ne: me._id } }).exec()) {
       throw ApiError.conflict('이미 사용 중인 이메일입니다.');
     }
     if (!ctx.mailer.enabled) throw ApiError.mailDisabled();
-    await sendChangeMail(ctx, me, input.email);
+    if (await codeSentWithin({ purpose: 'change', userId: me._id }, 60_000)) {
+      throw ApiError.rateLimited('인증 코드는 1분에 한 번만 보낼 수 있어요.');
+    }
+    await sendChangeCode(ctx, me, input.email);
     res.status(204).end();
+  });
+
+  router.post('/me/email/verify', validate({ body: emailCodeSchema }), async (req, res) => {
+    const me = currentUser(req);
+    const { code } = body(req, emailCodeSchema);
+    const result = await checkCode(ctx.config.jwtSecret, { purpose: 'change', userId: me._id }, code);
+    if (!result.ok) throw codeError(result.remainingAttempts);
+    const email = result.record.email;
+    if (await User.exists({ email, _id: { $ne: me._id } }).exec()) {
+      throw ApiError.conflict('이미 사용 중인 이메일입니다.');
+    }
+    const updated = await User.findByIdAndUpdate(
+      me._id,
+      { $set: { email, emailVerifiedAt: new Date() } },
+      { new: true },
+    )
+      .lean<IUser>()
+      .exec();
+    if (!updated) throw ApiError.notFound();
+    const id = updated._id.toHexString();
+    ctx.realtime.emitToUsers([id], 'user:update', serialize(updated, updated));
+    res.json({ user: serialize(updated, updated) });
   });
 
   router.put('/me/avatar', avatarUpload.single('avatar'), async (req, res) => {

@@ -8,6 +8,9 @@ import supertest from 'supertest';
 import { buildApp, type BuiltApp } from '../src/app.js';
 import { loadConfig, type Config } from '../src/config.js';
 import { ensureUploadDirs } from '../src/services/files.js';
+import { toUser } from '../src/lib/serialize.js';
+import { User, type IUser } from '../src/models/User.js';
+import { hashPassword } from '../src/services/auth.js';
 import { startMongo, type TestMongo } from './mongo.js';
 
 export interface TestApp {
@@ -68,11 +71,31 @@ export async function startTestApp(
   };
 }
 
-export async function register(app: TestApp, username: string, displayName?: string): Promise<Session> {
+/**
+ * A ready-to-use account with a verified email, like one that went through the 3-step signup
+ * (POST /auth/register/start → /verify → /register, covered by signup.test.ts with a mocked mailer).
+ * Mirrors what /auth/register does: first account is admin, `user:create` is broadcast.
+ */
+export async function register(
+  app: TestApp,
+  username: string,
+  displayName?: string,
+  options: { email?: string | null } = {},
+): Promise<Session> {
+  const email = options.email === undefined ? `${username}@test.example` : options.email;
+  const isFirst = (await User.estimatedDocumentCount().exec()) === 0;
+  const created = await User.create({
+    username,
+    displayName: displayName ?? username,
+    passwordHash: await hashPassword(`${username}-password-1`),
+    ...(email ? { email, emailVerifiedAt: new Date() } : {}),
+    role: isFirst ? 'admin' : 'member',
+  });
+  app.built.ctx.realtime.emitAll('user:create', toUser(created.toObject() as IUser, 'offline'));
   const res = await app.api
-    .post('/api/v1/auth/register')
-    .send({ username, email: `${username}@test.example`, password: `${username}-password-1`, displayName })
-    .expect(201);
+    .post('/api/v1/auth/login')
+    .send({ login: username, password: `${username}-password-1` })
+    .expect(200);
   return { token: res.body.token, user: res.body.user };
 }
 

@@ -1,23 +1,35 @@
 import type { Types } from 'mongoose';
 import type { AppContext } from '../context.js';
 import { User, type IUser } from '../models/User.js';
+import { issueCode } from './emailCodes.js';
 import { issueToken } from './emailTokens.js';
-import { changeMail, resetMail, verifyMail } from './mailTemplates.js';
+import { alreadyRegisteredMail, changeCodeMail, resetMail, signupCodeMail } from './mailTemplates.js';
 
 type MailUser = Pick<IUser, '_id' | 'displayName' | 'username'>;
 
 const displayNameOf = (u: MailUser) => u.displayName || u.username;
 
-export async function sendVerificationMail(ctx: AppContext, user: MailUser, email: string): Promise<void> {
-  const token = await issueToken(user._id, 'verify', email);
-  const url = `${ctx.config.publicUrl}/verify-email#token=${encodeURIComponent(token)}`;
-  await ctx.mailer.send(verifyMail(email, displayNameOf(user), url));
+/** Signup step 1: a code for a new address, or a notice for an address that already has an account. */
+export async function sendSignupMail(ctx: AppContext, email: string, existing: boolean): Promise<void> {
+  if (existing) {
+    // record an unredeemable code so the throttle and the response stay identical (no enumeration)
+    await issueCode(ctx.config.jwtSecret, { purpose: 'signup', email }, email, { deliverable: false });
+    await ctx.mailer.send(
+      alreadyRegisteredMail(
+        email,
+        `${ctx.config.publicUrl}/login`,
+        `${ctx.config.publicUrl}/forgot-password`,
+      ),
+    );
+    return;
+  }
+  const code = await issueCode(ctx.config.jwtSecret, { purpose: 'signup', email }, email);
+  await ctx.mailer.send(signupCodeMail(email, code));
 }
 
-export async function sendChangeMail(ctx: AppContext, user: MailUser, newEmail: string): Promise<void> {
-  const token = await issueToken(user._id, 'change', newEmail);
-  const url = `${ctx.config.publicUrl}/verify-email#token=${encodeURIComponent(token)}`;
-  await ctx.mailer.send(changeMail(newEmail, displayNameOf(user), url));
+export async function sendChangeCode(ctx: AppContext, user: MailUser, email: string): Promise<void> {
+  const code = await issueCode(ctx.config.jwtSecret, { purpose: 'change', userId: user._id }, email);
+  await ctx.mailer.send(changeCodeMail(email, displayNameOf(user), code));
 }
 
 export async function sendResetMail(ctx: AppContext, user: MailUser, email: string): Promise<void> {

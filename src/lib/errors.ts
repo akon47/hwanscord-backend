@@ -9,6 +9,7 @@ export type ErrorCode =
   | 'UNSUPPORTED_MEDIA_TYPE'
   | 'RATE_LIMITED'
   | 'MAIL_DISABLED'
+  | 'EMAIL_REQUIRED'
   | 'MAIL_QUOTA'
   | 'INTERNAL';
 
@@ -61,6 +62,9 @@ export class ApiError extends Error {
   }
   static rateLimited(message = '요청이 너무 많습니다. 잠시 후 다시 시도하세요.') {
     return new ApiError(429, 'RATE_LIMITED', message);
+  }
+  static emailRequired() {
+    return new ApiError(403, 'EMAIL_REQUIRED', '이메일 인증이 필요합니다. 이메일을 등록하고 인증해 주세요.');
   }
   static mailDisabled() {
     return new ApiError(503, 'MAIL_DISABLED', '메일 발송이 설정되어 있지 않습니다.');
