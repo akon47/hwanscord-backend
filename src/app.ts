@@ -72,6 +72,23 @@ export function buildApp(config: Config, options: BuildOptions = {}): BuiltApp {
   app.use(
     pinoHttp({
       logger,
+      // never log credentials: session tokens travel in the OAuth result redirect (Location header),
+      // the one-time GitHub code/state in the callback query string
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'res.headers.location',
+          'res.headers["set-cookie"]',
+        ],
+        censor: '[redacted]',
+      },
+      serializers: {
+        req: (req: { url?: string; [k: string]: unknown }) =>
+          typeof req.url === 'string' && req.url.startsWith('/api/v1/auth/oauth/')
+            ? { ...req, url: req.url.split('?')[0] }
+            : req,
+      },
       autoLogging: { ignore: (req) => req.url === '/healthz' || (req.url?.startsWith('/uploads/') ?? false) },
       customLogLevel: (_req, res, err) =>
         err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
