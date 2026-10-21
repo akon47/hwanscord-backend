@@ -1,0 +1,96 @@
+# hwanscord backend stack on the service VM (10.10.10.75). Deployed by Jenkins to /srv/hwanscord/backend.
+#   APP_TAG=<build number> docker compose pull && docker compose up -d
+# The frontend stack (akon47/hwanscord-frontend) joins the `hwanscord` network and proxies to `hwanscord-api:8080`.
+name: hwanscord-backend
+
+services:
+  api:
+    image: akon47/hwanscord-backend:${APP_TAG:-latest}
+    container_name: hwanscord-api
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      TRUST_PROXY: "1"
+      UPLOAD_DIR: /data/uploads
+      MONGODB_URI_FILE: /run/secrets/mongodb-uri
+      JWT_SECRET_FILE: /run/secrets/jwt-secret
+      CF_TURN_KEY_ID_FILE: /run/secrets/cf-turn-key-id
+      CF_TURN_API_TOKEN_FILE: /run/secrets/cf-turn-api-token
+      CF_ANALYTICS_TOKEN_FILE: /run/secrets/cf-analytics-token
+      CF_ACCOUNT_ID: 369c866387692806999258754dd0e854
+      TURN_MONTHLY_BUDGET_GB: "800"
+      TURN_CREDENTIAL_TTL: "86400"
+      LOG_LEVEL: info
+    secrets:
+      - mongodb-uri
+      - jwt-secret
+      - cf-turn-key-id
+      - cf-turn-api-token
+      - cf-analytics-token
+    volumes:
+      - /srv/hwanscord/data/uploads:/data/uploads
+      # legacy v1 files, only needed while running deploy/migrate-from-v1.sh
+      - /srv/hwanscord/legacy:/legacy:ro
+    networks:
+      - hwanscord
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  mongo:
+    image: mongo:7
+    container_name: hwanscord-mongo
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.5"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo-root-password
+      MONGO_INITDB_DATABASE: hwanscord
+      MONGO_APP_PASSWORD_FILE: /run/secrets/mongo-app-password
+    secrets:
+      - mongo-root-password
+      - mongo-app-password
+    volumes:
+      - /srv/hwanscord/data/mongo:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - hwanscord
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+secrets:
+  mongodb-uri:
+    file: /srv/hwanscord/secrets/mongodb-uri
+  jwt-secret:
+    file: /srv/hwanscord/secrets/jwt-secret
+  cf-turn-key-id:
+    file: /srv/hwanscord/secrets/cf-turn-key-id
+  cf-turn-api-token:
+    file: /srv/hwanscord/secrets/cf-turn-api-token
+  cf-analytics-token:
+    file: /srv/hwanscord/secrets/cf-analytics-token
+  mongo-root-password:
+    file: /srv/hwanscord/secrets/mongo-root-password
+  mongo-app-password:
+    file: /srv/hwanscord/secrets/mongo-app-password
+
+networks:
+  hwanscord:
+    name: hwanscord
