@@ -2,13 +2,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import pino from 'pino';
 import supertest from 'supertest';
 import { buildApp, type BuiltApp } from '../src/app.js';
 import { loadConfig, type Config } from '../src/config.js';
 import { ensureUploadDirs } from '../src/services/files.js';
+import { startMongo, type TestMongo } from './mongo.js';
 
 export interface TestApp {
   built: BuiltApp;
@@ -16,7 +16,7 @@ export interface TestApp {
   api: supertest.Agent;
   baseUrl: string;
   port: number;
-  mongod: MongoMemoryServer;
+  mongod: TestMongo;
   uploadDir: string;
   stop(): Promise<void>;
   reset(): Promise<void>;
@@ -31,11 +31,11 @@ export async function startTestApp(
   extraEnv: NodeJS.ProcessEnv = {},
   fetchImpl?: typeof fetch,
 ): Promise<TestApp> {
-  const mongod = await MongoMemoryServer.create({ instance: { dbName: 'hwanscord-test' } });
+  const mongod = await startMongo('hwanscord-test');
   const uploadDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hwanscord-test-'));
   const config = loadConfig({
     NODE_ENV: 'test',
-    MONGODB_URI: mongod.getUri('hwanscord-test'),
+    MONGODB_URI: mongod.uri,
     JWT_SECRET: 'test-secret-test-secret-test-secret-test-secret',
     UPLOAD_DIR: uploadDir,
     LOG_LEVEL: 'silent',
@@ -61,8 +61,8 @@ export async function startTestApp(
     },
     async stop() {
       await built.close();
-      await mongoose.disconnect();
       await mongod.stop();
+      await mongoose.disconnect();
       await fs.rm(uploadDir, { recursive: true, force: true });
     },
   };

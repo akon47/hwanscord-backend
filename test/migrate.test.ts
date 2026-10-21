@@ -2,25 +2,25 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { Types } from 'mongoose';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateLegacy } from '../scripts/migrate-legacy.js';
 import { Attachment, Channel, Message, User } from '../src/models/index.js';
 import { findMessages } from '../src/services/messages.js';
+import { startMongo, type TestMongo } from './mongo.js';
 
-let mongod: MongoMemoryServer;
+let mongod: TestMongo;
 let workDir: string;
 
 beforeAll(async () => {
-  mongod = await MongoMemoryServer.create({ instance: { dbName: 'hwanscord-legacy' } });
-  await mongoose.connect(mongod.getUri('hwanscord-legacy'));
+  mongod = await startMongo('hwanscord-legacy');
+  await mongoose.connect(mongod.uri);
   workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hwanscord-migrate-'));
 });
 afterAll(async () => {
-  await mongoose.disconnect();
   await mongod.stop();
+  await mongoose.disconnect();
   await fs.rm(workDir, { recursive: true, force: true });
 });
 

@@ -36,7 +36,9 @@ const channelSchema = new Schema<IChannel>(
 // text/voice names are unique per type; dm channels have no name
 channelSchema.index(
   { type: 1, name: 1 },
-  { unique: true, partialFilterExpression: { type: { $in: ['text', 'voice'] } } },
+  // unique name per type for text/voice; DMs always have name '' and are excluded.
+  // ($in is not allowed in partial filters before MongoDB 6, and CI runs 4.4.)
+  { unique: true, partialFilterExpression: { name: { $gt: '' } } },
 );
 channelSchema.index({ participants: 1 });
 

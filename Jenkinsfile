@@ -39,12 +39,27 @@ pipeline {
 
         stage('Test') {
             steps {
-                // lint + typecheck + vitest run inside the image build (the snap Docker on this VM cannot bind-mount the workspace)
-                sh 'docker build --pull --target test -t hwanscord-backend-test:${TAG} .'
+                // lint + typecheck run in the image build; vitest runs in a container next to a mongo:4.4 sidecar
+                // (the Jenkins VM CPU has no AVX, which MongoDB 5+ and mongodb-memory-server's 7.x binary need;
+                // the snap Docker on this VM cannot bind-mount the workspace, so nothing is mounted).
+                sh '''
+                    docker build --pull --target test -t hwanscord-backend-test:${TAG} .
+                    docker network create hwanscord-ci-${TAG}
+                    docker run -d --rm --name hwanscord-ci-mongo-${TAG} --network hwanscord-ci-${TAG} mongo:4.4
+                    for i in $(seq 1 30); do
+                        docker exec hwanscord-ci-mongo-${TAG} mongo --quiet --eval 'db.adminCommand("ping").ok' >/dev/null 2>&1 && break
+                        sleep 2
+                    done
+                    docker run --rm --network hwanscord-ci-${TAG}                         -e TEST_MONGODB_URI=mongodb://hwanscord-ci-mongo-${TAG}:27017                         hwanscord-backend-test:${TAG}
+                '''
             }
             post {
                 always {
-                    sh 'docker rmi hwanscord-backend-test:${TAG} >/dev/null 2>&1 || true'
+                    sh '''
+                        docker rm -f hwanscord-ci-mongo-${TAG} >/dev/null 2>&1 || true
+                        docker network rm hwanscord-ci-${TAG} >/dev/null 2>&1 || true
+                        docker rmi hwanscord-backend-test:${TAG} >/dev/null 2>&1 || true
+                    '''
                 }
             }
         }
