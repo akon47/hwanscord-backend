@@ -3,7 +3,7 @@
 This is the single source of truth shared by `hwanscord-backend` and `hwanscord-frontend`.
 Both sides must follow it exactly; change this file first when a change is needed.
 
-- Base URL (production): same origin as the web app, `https://hwanscord.kimhwan.kr`
+- Base URL (production): same origin as the web app, `https://hwanscord.kimhwan.com`
   - REST: `/api/v1/...`
   - Socket.IO: path `/socket.io/`
   - Uploaded files: `/uploads/avatars/<file>`, `/uploads/attachments/<file>`
@@ -342,7 +342,7 @@ A socket disconnect = `voice:leave` + presence recomputation. One user may have 
 | `TURN_CREDENTIAL_TTL` | `86400` | seconds |
 | `APP_VERSION` | `dev` | reported by `/healthz` |
 | `RESEND_API_KEY(_FILE)` | unset → mail disabled | Resend API key (sending access) |
-| `MAIL_FROM` | `HWANSCORD <noreply@kimhwan.kr>` | sender |
+| `MAIL_FROM` | `HWANSCORD <noreply@kimhwan.com>` | sender |
 | `MAIL_DAILY_LIMIT` | `80` | global mails per UTC day |
 | `RESEND_API_BASE_URL` | `https://api.resend.com` | override for local tests only |
 | `PUBLIC_URL` | `http://localhost:5173` | public origin of the web app (OAuth redirect_uri and result redirects) |
@@ -360,5 +360,5 @@ The v1 database (`hwanscord`) has collections `users {username,password,inserted
 - users: `password` → `passwordHash`, add `displayName=username`, `role` (`admin` for the earliest user), `status='online'`, `settings={}`; avatar file from `avatars` moved to `UPLOAD_DIR/avatars/` and `avatarUrl` set.
 - channels: add `type:'text'`, `name=channelName`, `position` by `insertedDate`; `voicechannels` documents are inserted into `channels` with `type:'voice'` (same `_id`) and the collection is dropped.
 - messages: `message`→`content`, `postedBy`→`channelId`, `createdBy`→`authorId`; a message whose whole content is a legacy attachment URL
-  (`https://api.hwanscord.kimhwan.kr/attachments/<file>` or `/attachments/<file>`) becomes `content=""` with one attachment, the file is moved to `UPLOAD_DIR/attachments/`.
+  (`https://api.hwanscord.kimhwan.com/attachments/<file>` or `/attachments/<file>`) becomes `content=""` with one attachment, the file is moved to `UPLOAD_DIR/attachments/`.
 - `avatars`, `attachments` collections are dropped after use; a text index on `messages.content` is created.

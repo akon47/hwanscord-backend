@@ -1,5 +1,5 @@
 // hwanscord-backend CI/CD — same shape as visit-counter/funcia:
-//   GitHub push (master) → Jenkins (build.kimhwan.kr) → lint/typecheck/tests inside `docker build --target test`
+//   GitHub push (master) → Jenkins (build.kimhwan.com) → lint/typecheck/tests inside `docker build --target test`
 //   → image → Docker Hub (akon47/hwanscord-backend) → ssh deploy@10.10.10.75 → docker compose pull/up → smoke test.
 pipeline {
     agent any

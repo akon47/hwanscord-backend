@@ -1,6 +1,6 @@
 # 환스코드 백엔드 (hwanscord-backend)
 
-디스코드를 본뜬 토이 프로젝트 [환스코드](https://hwanscord.kimhwan.kr) 의 API 서버입니다.
+디스코드를 본뜬 토이 프로젝트 [환스코드](https://hwanscord.kimhwan.com) 의 API 서버입니다.
 텍스트 채팅·DM·반응·답장·첨부·고정·검색, 음성 채널과 화면 공유를 위한 WebRTC 시그널링을 제공합니다.
 프론트엔드는 [hwanscord-frontend](https://github.com/akon47/hwanscord-frontend) 입니다.
 
@@ -27,7 +27,7 @@ npm run build       # dist/
 
 ## 배포 흐름
 
-`master` 에 push → Jenkins 잡 `hwanscord-backend`(build.kimhwan.kr) → `docker build --target test`(lint·typecheck·테스트)
+`master` 에 push → Jenkins 잡 `hwanscord-backend`(build.kimhwan.com) → `docker build --target test`(lint·typecheck·테스트)
 → `akon47/hwanscord-backend:<빌드번호>` 를 Docker Hub 에 push → ssh 로 VM(10.10.10.75) 의 `/srv/hwanscord/backend` 에 `deploy/` 복사
 → `deploy.sh`(`docker compose pull && up -d`) → `/healthz` 의 version 이 빌드번호와 같은지 확인.
 
@@ -54,8 +54,8 @@ VM 쪽 구성:
 | `github-client-secret` | (선택) 그 앱의 Client Secret |
 | `resend-api-key` | (선택) Resend API 키(Sending access). 비어 있으면 메일 꺼짐: 가입은 되지만 인증·비밀번호 찾기 메일이 나가지 않음 |
 
-GitHub OAuth App 설정: Homepage `https://hwanscord.kimhwan.kr`, Authorization callback URL
-`https://hwanscord.kimhwan.kr/api/v1/auth/oauth/github/callback`. 키를 넣은 뒤 `docker compose up -d api` 로 재시작합니다.
+GitHub OAuth App 설정: Homepage `https://hwanscord.kimhwan.com`, Authorization callback URL
+`https://hwanscord.kimhwan.com/api/v1/auth/oauth/github/callback`. 키를 넣은 뒤 `docker compose up -d api` 로 재시작합니다.
 
 운영자 PC 원본은 `~/.homelab/services/hwanscord/` 에 둡니다.
 

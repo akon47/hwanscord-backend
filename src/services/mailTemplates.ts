@@ -1,7 +1,7 @@
 import type { MailMessage } from './mailer.js';
 
 const BRAND = '#5865f2';
-const LOGO = 'https://hwanscord.kimhwan.kr/icon-192.png';
+const LOGO = 'https://hwanscord.kimhwan.com/icon-192.png';
 
 function escapeHtml(value: string): string {
   return value
@@ -74,7 +74,7 @@ ${validity}
 ${fallback}
 </td></tr>
 <tr><td style="padding:16px 24px 24px;border-top:1px solid #ebedef;font-size:12px;line-height:1.6;color:#80848e;">
-본인이 요청하지 않았다면 이 메일은 무시하세요. 계정에는 아무 변화도 생기지 않아요.<br>HWANSCORD · hwanscord.kimhwan.kr
+본인이 요청하지 않았다면 이 메일은 무시하세요. 계정에는 아무 변화도 생기지 않아요.<br>HWANSCORD · hwanscord.kimhwan.com
 </td></tr>
 </table>
 </td></tr>

@@ -95,7 +95,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     attachmentGcIntervalMs: Number(env.ATTACHMENT_GC_INTERVAL_MS ?? 60 * 60 * 1000),
     mail: {
       apiKey: readSecret(env, 'RESEND_API_KEY'),
-      from: env.MAIL_FROM?.trim() || 'HWANSCORD <noreply@kimhwan.kr>',
+      from: env.MAIL_FROM?.trim() || 'HWANSCORD <noreply@kimhwan.com>',
       dailyLimit: Number(env.MAIL_DAILY_LIMIT ?? 80),
       apiBaseUrl: (env.RESEND_API_BASE_URL ?? 'https://api.resend.com').replace(/\/+$/, ''),
     },

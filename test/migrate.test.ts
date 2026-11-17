@@ -92,7 +92,7 @@ describe('migrate-legacy', () => {
         updatedAt: new Date(t0.getTime() + 60_000),
       },
       {
-        message: 'https://api.hwanscord.kimhwan.kr/attachments/file001.png',
+        message: 'https://api.hwanscord.kimhwan.com/attachments/file001.png',
         createdBy: u1,
         postedBy: c1,
         insertedDate: new Date(t0.getTime() + 120_000),

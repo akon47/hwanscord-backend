@@ -119,7 +119,7 @@ describe('verify-first signup', () => {
       role: 'admin',
     });
     const mail = sent[0]!;
-    expect(mail).toMatchObject({ to: 'mina.kim@example.com', from: 'HWANSCORD <noreply@kimhwan.kr>' });
+    expect(mail).toMatchObject({ to: 'mina.kim@example.com', from: 'HWANSCORD <noreply@kimhwan.com>' });
     expect(mail.subject).toMatch(/인증 코드 \d{6}/);
     expect(mail.html).toContain('#5865f2');
     expect(mail.text).toContain('10분');
